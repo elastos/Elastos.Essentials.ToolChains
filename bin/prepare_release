@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import subprocess
+import argparse
+import distutils.dir_util as dir_util
+import textwrap
+import timeit
+import json
+from collections import OrderedDict
+
+parser = argparse.ArgumentParser(description='For Trinity release',
+                                 formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('target', metavar='TARGET', choices=['all', 'build', 'incversion', 'push', 'tag', 'update'],
+                    help=textwrap.dedent('''\
+                         Specify the target.
+                         all: update code, increase version for runtime and all dapps, build;
+                         build: build launcher, runtime;
+                         incversion: add version for launcher runtime dapps;
+                         push: push change;
+                         tag: add tag for trinity and all submodules;
+                         update: update code.
+                     '''))
+parser.add_argument('-pf', '--platform', dest='platform', required=False,
+                    help='Specify the build platform.')
+parser.add_argument('-bt', '--buildtype', dest='buildtype', required=False,
+                    help='Specify the build type, elastOS or native, default is elastOS.')
+parser.add_argument('-bv', '--buildvariant', dest='buildvariant', required=False,
+                    help='Specify the build variant.')
+args = parser.parse_args()
+
+SCRIPT_PATH=os.path.realpath(__file__)
+TOOLCHAINS_DIR_PATH=os.path.dirname(os.path.dirname(SCRIPT_PATH))
+TOOLCHAINS_DIR_NAME=os.path.basename(TOOLCHAINS_DIR_PATH)
+PROJECT_DIR_PATH=os.path.join(TOOLCHAINS_DIR_PATH, "..")
+RUNTIME_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Runtime")
+LAUNCHER_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Launcher")
+DAPPS_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Dapps")
+IONIC_DIR_PATH=os.path.join(DAPPS_DIR_PATH, "Ionic")
+
+
+def run_cmd(cmd, ignore_error=False):
+    print("Running: " + cmd)
+    ret = subprocess.call(cmd, shell=True)
+    if not ignore_error and ret != 0:
+        sys.exit(ret)
+
+def check_firebase():
+    if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/GoogleService-Info.plist')):
+        print("Can not find GoogleService-Info.plist!")
+        sys.exit(1)
+    if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/google-services.json')):
+        print("Can not find google-services.json!")
+        sys.exit(1)
+
+def update_code(branchName, originBranch):
+    # fetch --all
+    os.chdir(PROJECT_DIR_PATH)
+    cmd = "git fetch --all"
+    run_cmd(cmd)
+    cmd = "git submodule foreach 'git fetch --all'"
+    run_cmd(cmd)
+
+    update_code = input("Any changes in the working tree are discarded. Type 'y' to continue :")
+    if update_code.lower() != 'y':
+        sys.exit(1)
+
+    cmd = "git branch %s & git checkout %s && git reset --hard origin/%s"%(branchName,branchName,originBranch)
+    run_cmd(cmd)
+
+    # Maybe the branch already exist, so add "& true" to return true
+    cmd = "git submodule foreach 'git branch %s & true'"%(branchName)
+    run_cmd(cmd)
+    cmd = "git submodule foreach 'git checkout %s && git reset --hard origin/%s'"%(branchName,originBranch)
+    run_cmd(cmd)
+
+    update_code = input("Clobber the porject? You should clobber when build a new version. Type 'y' to continue :")
+    if update_code.lower() == 'y':
+        run_cmd('./ToolChains/bin/build clobber')
+
+def tag():
+    # for Trinity and all submodules
+    # get tag name
+    tagName = input("Pls input the tag name:")
+    tag_push = input("tag name is " + tagName + "\nType 'y' to tag and push :")
+    if tag_push.lower() != 'y':
+        sys.exit(1)
+
+    os.chdir(PROJECT_DIR_PATH)
+    cmd = "git tag %s && git push origin %s"%(tagName,tagName)
+    run_cmd(cmd)
+    cmd = "git submodule foreach 'git tag %s && git push origin %s'"%(tagName,tagName)
+    run_cmd(cmd)
+
+def increase_version_manifest(manifest):
+    file_in = open(manifest, "r")
+    data = json.load(file_in, object_pairs_hook=OrderedDict)
+
+    rindex = data['version'].rfind('.')
+    preVersion = data['version'][0:rindex+1]
+    miniVersion = data['version'][rindex+1:]
+    data['version'] = preVersion + str(int(miniVersion) + 1)
+    data['version_code'] += 1
+
+    print("    version:" + str(data['version']))
+    print("    version_code:" + str(data['version_code']))
+    file_in.close()
+
+    file_out = open(manifest, 'w')
+    file_out.write(json.dumps(data, indent=4))
+    file_out.close()
+
+def push_code():
+    cmd = "git add src/assets/manifest.json && git commit -m 'increase version for release' && git push"
+    run_cmd(cmd)
+
+def push_runtime_code():
+    cmd = "git add scripts/patches/after_platform_add_android/build_gradle.patch && git commit -m 'increase version for release' && git push"
+    run_cmd(cmd)
+
+def needPartnerDapps():
+    if args.buildvariant and  args.buildvariant == "itunesappstore":
+        return False
+    return True
+
+def getBuildArg():
+    buildArg = ""
+    if args.buildtype:
+        buildArg += " -bt " + args.buildtype
+    if args.buildvariant:
+        buildArg += " -bv " + args.buildvariant
+    return buildArg
+
+def let_user_pick(options):
+    for idx, element in enumerate(options):
+        print("{}) {}".format(idx+1,element))
+
+    while True:
+        i = input("Enter number: ")
+        try:
+            if 0 < int(i) <= len(options):
+                return int(i) - 1
+        except:
+            pass
+    return None
+
+startTime = timeit.default_timer()
+
+if args.target == "all" or args.target == "build":
+    if not args.platform:
+        print("Pls choose the platform: [android, ios]")
+        options = ["android", "ios"]
+        index = let_user_pick(options)
+        args.platform = options[index]
+
+if args.target == "all" or args.target == "update":
+    update_code("release", "release")
+
+if args.target == "tag":
+    tag()
+
+if args.target == "push":
+    update_code = input("Do you manually modify the version name in scripts/patches/after_platform_add_android/build_gradle.patch. Type 'y' to continue :")
+    if update_code.lower() != 'y':
+        sys.exit(1)
+
+    print("Runtime: ")
+    os.chdir(RUNTIME_DIR_PATH)
+    push_runtime_code()
+
+    print("Launcher: ")
+    os.chdir(LAUNCHER_DIR_PATH)
+    push_code()
+
+    dirs = os.listdir(IONIC_DIR_PATH)
+    for dir in dirs:
+        dapp_dir = os.path.join(IONIC_DIR_PATH, dir)
+        if os.path.isdir(dapp_dir):
+            print("Dapp push code: " + dir)
+            os.chdir(dapp_dir)
+            push_code()
+
+    # Trinity repo
+    os.chdir(PROJECT_DIR_PATH)
+    run_cmd('git add Runtime')
+    run_cmd('git add Launcher')
+
+    dirs = os.listdir(IONIC_DIR_PATH)
+    for dir in dirs:
+        dapp_dir = os.path.join(IONIC_DIR_PATH, dir)
+        if os.path.isdir(dapp_dir):
+            run_cmd('git add Dapps/Ionic/' + dir)
+
+    run_cmd("git commit -m 'increase version for release' && git push")
+
+if args.target == "incversion":
+    # increase_version_runtime()
+
+    print("Launcher: ")
+    increase_version_manifest(LAUNCHER_DIR_PATH +'/src/assets/manifest.json')
+
+    dirs = os.listdir(IONIC_DIR_PATH)
+    for dir in dirs:
+        dapp_dir = os.path.join(IONIC_DIR_PATH, dir)
+        if os.path.isdir(dapp_dir):
+            print("Dapp: " + dir)
+            os.chdir(dapp_dir)
+            increase_version_manifest(dapp_dir +'/src/assets/manifest.json')
+
+if args.target == "all" or args.target == "build":
+    os.chdir(PROJECT_DIR_PATH)
+    check_firebase()
+    # delete the partners dapp in mirror folder.
+    run_cmd('./ToolChains/bin/build partners --delete')
+    if needPartnerDapps():
+        run_cmd('./ToolChains/bin/build partners -pf ' + args.platform)
+    # upload soucemap to sentry for better debugging
+    run_cmd('npm install @sentry/cli -g')
+    run_cmd('sentry-cli login')
+
+    run_cmd('./ToolChains/bin/build all -pf ' + args.platform + ' --release  --uploadsourcemap' + getBuildArg())
+
+elapsed = timeit.default_timer() - startTime
+minutes = elapsed / 60
+seconds = elapsed % 60
+print('elapsed time [%d min %0.2fs]' % (minutes, seconds))

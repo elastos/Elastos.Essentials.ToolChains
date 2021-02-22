@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import subprocess
+import argparse
+import distutils.dir_util as dir_util
+import textwrap
+import timeit
+
+parser = argparse.ArgumentParser(description='For Trinity release',
+                                 formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('target', metavar='TARGET', choices=['branch', 'checkout', 'create', 'fetch-all', 'push', 'update'],
+                    help=textwrap.dedent('''\
+                         Specify the target.
+                         branch: switch branch;
+                         checkout: checkout release branch;
+                         create: create branch;
+                         fetch-all: fetch --all;
+                         push: push branch;
+                         update: update master branch code.
+                     '''))
+args = parser.parse_args()
+
+SCRIPT_PATH=os.path.realpath(__file__)
+TOOLCHAINS_DIR_PATH=os.path.dirname(os.path.dirname(SCRIPT_PATH))
+PROJECT_DIR_PATH=os.path.join(TOOLCHAINS_DIR_PATH, "..")
+
+
+def run_cmd(cmd, ignore_error=False):
+    print("Running: " + cmd)
+    ret = subprocess.call(cmd, shell=True)
+    if not ignore_error and ret != 0:
+        sys.exit(ret)
+
+def let_user_pick(options):
+    for idx, element in enumerate(options):
+        print("{}) {}".format(idx+1,element))
+
+    while True:
+        i = input("Enter number: ")
+        try:
+            if 0 < int(i) <= len(options):
+                return int(i) - 1
+        except:
+            pass
+    return None
+
+def choose_branch():
+    options = ["master", "release"]
+    index = let_user_pick(options)
+    return options[index]
+
+def update_code():
+    os.chdir(PROJECT_DIR_PATH)
+
+    update_code = input("Update master branch code. Any changes in the working tree are discarded. Type 'y' to continue :")
+    if update_code.lower() != 'y':
+        sys.exit(1)
+    run_cmd('git checkout master && git reset --hard')
+    run_cmd("git submodule foreach 'git reset --hard && git checkout master'")
+    run_cmd('git pull --rebase')
+    run_cmd('git submodule update --init --rebase')
+
+def fetch_all():
+    os.chdir(PROJECT_DIR_PATH)
+    cmd = "git fetch --all"
+    run_cmd(cmd)
+
+    cmd = "git submodule foreach 'git fetch --all'"
+    run_cmd(cmd)
+
+def checkout_branch(branchName, originBranch):
+    update_code = input("Any changes in the working tree are discarded. Type 'y' to continue :")
+    if update_code.lower() != 'y':
+        sys.exit(1)
+
+    os.chdir(PROJECT_DIR_PATH)
+    cmd = "git branch %s & git checkout %s && git reset --hard origin/%s"%(branchName,branchName,originBranch)
+    run_cmd(cmd)
+
+    # Maybe the branch already exist, so add "& true" to return true
+    cmd = "git submodule foreach 'git branch %s & true'"%(branchName)
+    run_cmd(cmd)
+    cmd = "git submodule foreach 'git checkout %s && git reset --hard origin/%s'"%(branchName,originBranch)
+    run_cmd(cmd)
+
+def push_branch():
+    # be careful
+    branchName = "release"
+    tag_push = input("branch name is " + branchName + "\nBe careful, it will push with '--force', Type 'y' to push:")
+    if tag_push.lower() != 'y':
+        sys.exit(1)
+
+    os.chdir(PROJECT_DIR_PATH)
+    cmd = "git checkout %s && git push origin %s --force"%(branchName,branchName)
+    run_cmd(cmd)
+    cmd = "git submodule foreach 'git checkout %s && git push origin %s --force'"%(branchName,branchName)
+    run_cmd(cmd)
+
+def switch_branch():
+    branchName = choose_branch()
+    print("checkout %s branch"%(branchName))
+
+    os.chdir(PROJECT_DIR_PATH)
+    cmd = "git checkout %s"%(branchName)
+    run_cmd(cmd)
+    cmd = "git submodule foreach 'git checkout %s'"%(branchName)
+    run_cmd(cmd)
+
+startTime = timeit.default_timer()
+
+if args.target == "branch":
+    switch_branch()
+
+if args.target == "checkout":
+    checkout_branch("release", "release")
+
+if args.target == "create":
+    checkout_branch("release", "master")
+
+if args.target == "fetch-all":
+    fetch_all()
+
+if args.target == "push":
+    push_branch()
+
+if args.target == "update":
+    update_code()
+
+elapsed = timeit.default_timer() - startTime
+minutes = elapsed / 60
+seconds = elapsed % 60
+print('elapsed time [%d min %0.2fs]' % (minutes, seconds))
