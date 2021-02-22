@@ -16,8 +16,8 @@ import timeit
 from collections import OrderedDict
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../lib'))
-import ela_plugin
-import ela_xml
+# import ela_plugin
+# import ela_xml
 
 class bcolors:
     HEADER = '\033[95m'
@@ -36,18 +36,12 @@ class bcolors:
 
 parser = argparse.ArgumentParser(description='Build the Elastor.Trinity project.',
                                  formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('target', metavar='TARGET', choices=['all', 'clean', 'clobber','dapp', 'launcher', "partner", "partners", "plugin", "runtime"],
+parser.add_argument('target', metavar='TARGET', choices=['app', 'clobber', "plugin"],
                     help=textwrap.dedent('''\
                          Specify the target to build.
-                         all: build all module: launcher, dapp, runtime;
-                         dapp: build dapp;
-                         launcher: build launcher, Dapp/Ionic/DIDSession, runtime;
-                         runtime: build runtime;
-                         clean: delete runtime platforms;
+                         app: build app;
                          clobber: delete all build files;
                          plugin: reintall the specify plugin;
-                         partner: build the specify partner app;
-                         partners: build all partner apps.
                      '''))
 parser.add_argument('-p', '--path', dest='target_path', metavar='PATH', required=False,
                     help='Specify the path/name of plugin/Dapp.')
@@ -95,22 +89,16 @@ SCRIPT_PATH=os.path.realpath(__file__)
 TOOLCHAINS_DIR_PATH=os.path.dirname(os.path.dirname(SCRIPT_PATH))
 TOOLCHAINS_DIR_NAME=os.path.basename(TOOLCHAINS_DIR_PATH)
 PROJECT_DIR_PATH=os.path.join(TOOLCHAINS_DIR_PATH, "..")
-RUNTIME_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Runtime")
-LAUNCHER_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Launcher")
-DAPPS_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Dapps")
-IONIC_DIR_PATH=os.path.join(DAPPS_DIR_PATH, "Ionic")
-BUILT_IN_DIR_PATH=os.path.join(RUNTIME_DIR_PATH, "www/built-in/")
+APP_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "App")
 PLUGIN_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Plugins")
-BUILT_IN_MIRROR_ANDROID=os.path.join(RUNTIME_DIR_PATH, "platforms/android/app/src/main/assets/www/built-in/")
-BUILT_IN_MIRROR_IOS=os.path.join(RUNTIME_DIR_PATH, "platforms/ios/www/built-in/")
-BUILT_IN_MIRROR_ELECTRON=os.path.join(RUNTIME_DIR_PATH, "platforms/electron/www/built-in/")
-ELECTRON_TITLEBAR_DIR_PATH=os.path.join(RUNTIME_DIR_PATH, "platform_src/electron/titlebar")
-CONFIG_MIRROR_ANDROID=os.path.join(RUNTIME_DIR_PATH, "platforms/android/app/src/main/assets/www/config/config.json")
-CONFIG_MIRROR_IOS=os.path.join(RUNTIME_DIR_PATH, "platforms/ios/www/config/config.json")
+
 
 ###############
 ### METHODS ###
 ###############
+
+def isWindows():
+    return sys.platform == "win32"
 
 def print_with_color(color, message):
     print(color + message + bcolors.ENDC)
@@ -136,226 +124,171 @@ def copy_tree(src, dst, clean=True):
     else:
         print_with_color(bcolors.FAIL, "Copy error:" + src + " is not a directory.")
 
-def get_appid(manifest):
-    file_in = open(manifest, "r")
-    data = json.load(file_in)
-    return data['id']
+# def get_appid(manifest):
+#     file_in = open(manifest, "r")
+#     data = json.load(file_in)
+#     return data['id']
 
-# build app and copy the www/* to Runtime/www/built-in/
-def build_app(app_path, platform, needBuild, output="www"):
-    basename = os.path.basename(app_path)
-    print_with_color(bcolors.OKCYAN, "\r\n-------------------- Building dapp: " + basename + " --------------------")
-    os.chdir(app_path)
+# def add_firebase():
+#     if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/GoogleService-Info.plist')):
+#         print_with_color(bcolors.WARNING, "Can not find GoogleService-Info.plist!")
+#         return
+#     if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/google-services.json')):
+#         print_with_color(bcolors.WARNING, "Can not find google-services.json!")
+#         return
 
-    if needBuild:
-        run_cmd("npm install")
-        if ela_plugin.isWindows():
-            run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
-            run_cmd("ionic build --prod")
-        else:
-            run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic build --prod")
-        if args.uploadsourcemap and os.path.isfile(app_path +'/.sentry.sh'):
-            # upload sourcemaps to sentry for better debugging
-            run_cmd("./.sentry.sh")
+#     # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
+#     # 9.1.2-cli is ok
+#     sys = platform.system()
+#     if sys != "Darwin":
+#         run_cmd("cordova platform rm ios")
 
-    app_id = get_appid(app_path +'/src/assets/manifest.json')
-    copy_tree(output, BUILT_IN_DIR_PATH + app_id)
-    if os.path.isdir(BUILT_IN_MIRROR_ANDROID):
-        copy_tree(output, BUILT_IN_MIRROR_ANDROID + app_id)
-    if os.path.isdir(BUILT_IN_MIRROR_IOS):
-        copy_tree(output, BUILT_IN_MIRROR_IOS + app_id)
-    if os.path.isdir(BUILT_IN_MIRROR_ELECTRON):
-        copy_tree(output, BUILT_IN_MIRROR_ELECTRON + app_id)
+#     run_cmd("npm install -g xml-js")
 
-def delete_app(app_path):
-    if not os.path.isdir(app_path):
-        return
+#     cmd="cordova plugin add cordova-plugin-firebasex"
+#     run_cmd(cmd)
 
-    os.chdir(app_path)
-    app_id = get_appid(app_path +'/src/assets/manifest.json')
-    remove_tree(BUILT_IN_DIR_PATH + app_id)
-    if os.path.isdir(BUILT_IN_MIRROR_ANDROID + app_id):
-        remove_tree(BUILT_IN_MIRROR_ANDROID + app_id)
-    if os.path.isdir(BUILT_IN_MIRROR_IOS + app_id):
-        remove_tree(BUILT_IN_MIRROR_IOS + app_id)
-    if os.path.isdir(BUILT_IN_MIRROR_ELECTRON + app_id):
-        remove_tree(BUILT_IN_MIRROR_ELECTRON + app_id)
+# def load_partnerapps():
+#     config_path = os.path.join(os.path.dirname(SCRIPT_PATH), "partners.json")
+#     with open(config_path,'r') as load_f:
+#         partnerapps_dict = json.load(load_f)
+#         apps_path = partnerapps_dict['dapppath']
+#         if apps_path.strip() == "":
+#             apps_path = "Dapps/Partner"
+#         apps_fullpath = os.path.join(PROJECT_DIR_PATH, apps_path)
+#         partnerapps_dict['apps_fullpath'] = apps_fullpath
 
-def add_firebase():
-    if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/GoogleService-Info.plist')):
-        print_with_color(bcolors.WARNING, "Can not find GoogleService-Info.plist!")
-        return
-    if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/google-services.json')):
-        print_with_color(bcolors.WARNING, "Can not find google-services.json!")
-        return
+#         if not os.path.isdir(apps_fullpath):
+#             os.makedirs(apps_fullpath)
+#         return partnerapps_dict
 
-    # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
-    # 9.1.2-cli is ok
-    sys = platform.system()
-    if sys != "Darwin":
-        run_cmd("cordova platform rm ios")
+# def show_partnerapps():
+#     partnerapps_dict = load_partnerapps()
+#     print("  All partner apps:")
+#     for app in partnerapps_dict['partnerapps']:
+#         print("    " + app['name'])
 
-    run_cmd("npm install -g xml-js")
+# def get_code(app):
+#     print("Get the code: " + app['name'])
+#     if os.path.isdir(app['name']):
+#         os.chdir(app['name'])
+#         run_cmd("git checkout master")
+#         run_cmd("git pull")
+#     else:
+#         run_cmd("git clone " + app['repourl'] + " " + app['name'])
+#         os.chdir(app['name'])
 
-    cmd="cordova plugin add cordova-plugin-firebasex"
-    run_cmd(cmd)
+#     if app['commit'].strip() != "":
+#         run_cmd("git checkout " + app['commit'])
+#     elif app['tag'].strip() != "":
+#         run_cmd("git fetch --tag")
+#         run_cmd("git checkout " + app['tag'])
 
-def load_partnerapps():
-    config_path = os.path.join(os.path.dirname(SCRIPT_PATH), "partners.json")
-    with open(config_path,'r') as load_f:
-        partnerapps_dict = json.load(load_f)
-        apps_path = partnerapps_dict['dapppath']
-        if apps_path.strip() == "":
-            apps_path = "Dapps/Partner"
-        apps_fullpath = os.path.join(PROJECT_DIR_PATH, apps_path)
-        partnerapps_dict['apps_fullpath'] = apps_fullpath
+# # Get the code of the partner app and build
+# def build_partnerapp(apps_fullpath, app, platform):
+#     os.chdir(apps_fullpath)
 
-        if not os.path.isdir(apps_fullpath):
-            os.makedirs(apps_fullpath)
-        return partnerapps_dict
+#     app_fullpath = os.path.join(apps_fullpath, app['name'])
+#     if "folder" in app:
+#         app_fullpath = os.path.join(app_fullpath, app['folder'])
 
-def show_partnerapps():
-    partnerapps_dict = load_partnerapps()
-    print("  All partner apps:")
-    for app in partnerapps_dict['partnerapps']:
-        print("    " + app['name'])
+#     if args.delete:
+#         return delete_app(app_fullpath)
+#     else:
+#         get_code(app)
 
-def get_code(app):
-    print("Get the code: " + app['name'])
-    if os.path.isdir(app['name']):
-        os.chdir(app['name'])
-        run_cmd("git checkout master")
-        run_cmd("git pull")
-    else:
-        run_cmd("git clone " + app['repourl'] + " " + app['name'])
-        os.chdir(app['name'])
+#         needBuild = True
+#         output = "www"
 
-    if app['commit'].strip() != "":
-        run_cmd("git checkout " + app['commit'])
-    elif app['tag'].strip() != "":
-        run_cmd("git fetch --tag")
-        run_cmd("git checkout " + app['tag'])
+#         if "outputPath" in app:
+#             # don't build, just copy
+#             needBuild = False
+#             output = app['outputPath']
 
-# Get the code of the partner app and build
-def build_partnerapp(apps_fullpath, app, platform):
-    os.chdir(apps_fullpath)
+#         build_app(app_fullpath, platform, needBuild, output)
 
-    app_fullpath = os.path.join(apps_fullpath, app['name'])
-    if "folder" in app:
-        app_fullpath = os.path.join(app_fullpath, app['folder'])
+# # Get the code of all partner apps and build
+# def build_partnerapps(platform):
+#     partnerapps_dict = load_partnerapps()
+#     apps_fullpath = partnerapps_dict['apps_fullpath']
 
-    if args.delete:
-        return delete_app(app_fullpath)
-    else:
-        get_code(app)
+#     for app in partnerapps_dict['partnerapps']:
+#         if platform in app['platforms']:
+#             build_partnerapp(apps_fullpath, app, platform)
 
-        needBuild = True
-        output = "www"
+# def delete_partnerapps():
+#     partnerapps_dict = load_partnerapps()
+#     apps_fullpath = partnerapps_dict['apps_fullpath']
 
-        if "outputPath" in app:
-            # don't build, just copy
-            needBuild = False
-            output = app['outputPath']
+#     for app in partnerapps_dict['partnerapps']:
+#         app_fullpath = os.path.join(apps_fullpath, app['name'])
+#         if "folder" in app:
+#             app_fullpath = os.path.join(app_fullpath, app['folder'])
+#         delete_app(app_fullpath)
 
-        build_app(app_fullpath, platform, needBuild, output)
+# def updateJsonFile(jsonfile, key, value):
+#     file_in = open(jsonfile, "r")
+#     data = json.load(file_in, object_pairs_hook=OrderedDict)
+#     file_in.close()
 
-# Get the code of all partner apps and build
-def build_partnerapps(platform):
-    partnerapps_dict = load_partnerapps()
-    apps_fullpath = partnerapps_dict['apps_fullpath']
+#     data[key] = value
 
-    for app in partnerapps_dict['partnerapps']:
-        if platform in app['platforms']:
-            build_partnerapp(apps_fullpath, app, platform)
+#     file_out = open(jsonfile, 'w')
+#     file_out.write(json.dumps(data, indent=4))
+#     file_out.close()
 
-def delete_partnerapps():
-    partnerapps_dict = load_partnerapps()
-    apps_fullpath = partnerapps_dict['apps_fullpath']
+# def updateConfigFile(key, value):
+#     config_path = os.path.join(RUNTIME_DIR_PATH, "www/config/config.json")
+#     updateJsonFile(config_path, key, value)
 
-    for app in partnerapps_dict['partnerapps']:
-        app_fullpath = os.path.join(apps_fullpath, app['name'])
-        if "folder" in app:
-            app_fullpath = os.path.join(app_fullpath, app['folder'])
-        delete_app(app_fullpath)
+#     # update mirror config file
+#     if os.path.isfile(CONFIG_MIRROR_ANDROID):
+#         updateJsonFile(CONFIG_MIRROR_ANDROID, key, value)
+#     if os.path.isfile(CONFIG_MIRROR_IOS):
+#         updateJsonFile(CONFIG_MIRROR_IOS, key, value)
 
-def updateJsonFile(jsonfile, key, value):
-    file_in = open(jsonfile, "r")
-    data = json.load(file_in, object_pairs_hook=OrderedDict)
-    file_in.close()
+# def updateConfig():
+#     if args.buildtype:
+#         updateConfigFile("build.type", args.buildtype)
+#     if args.buildvariant:
+#         updateConfigFile("build.variant", args.buildvariant)
 
-    data[key] = value
+# def updatePackageJson(path, platforms):
+#     file_in = open(path, "r")
+#     data = json.load(file_in, object_pairs_hook=OrderedDict)
+#     data['cordova']['platforms'] = platforms
+#     file_in.close()
 
-    file_out = open(jsonfile, 'w')
-    file_out.write(json.dumps(data, indent=4))
-    file_out.close()
-
-def updateConfigFile(key, value):
-    config_path = os.path.join(RUNTIME_DIR_PATH, "www/config/config.json")
-    updateJsonFile(config_path, key, value)
-
-    # update mirror config file
-    if os.path.isfile(CONFIG_MIRROR_ANDROID):
-        updateJsonFile(CONFIG_MIRROR_ANDROID, key, value)
-    if os.path.isfile(CONFIG_MIRROR_IOS):
-        updateJsonFile(CONFIG_MIRROR_IOS, key, value)
-
-def updateConfig():
-    if args.buildtype:
-        updateConfigFile("build.type", args.buildtype)
-    if args.buildvariant:
-        updateConfigFile("build.variant", args.buildvariant)
-
-def updatePackageJson(path, platforms):
-    file_in = open(path, "r")
-    data = json.load(file_in, object_pairs_hook=OrderedDict)
-    data['cordova']['platforms'] = platforms
-    file_in.close()
-
-    file_out = open(path, 'w')
-    file_out.write(json.dumps(data, indent=2))
-    file_out.close()
+#     file_out = open(path, 'w')
+#     file_out.write(json.dumps(data, indent=2))
+#     file_out.close()
 
 startTime = timeit.default_timer()
 
-ela_plugin.setup_paths(RUNTIME_DIR_PATH, PLUGIN_DIR_PATH)
+# ela_plugin.setup_paths(RUNTIME_DIR_PATH, PLUGIN_DIR_PATH)
 
-if TOOLCHAINS_DIR_NAME != "ToolChains" or \
-   not os.path.isdir(RUNTIME_DIR_PATH) or \
-   not os.path.isdir(LAUNCHER_DIR_PATH):
-    print_with_color(bcolors.FAIL, 'Error: You should "git clone" the "Elastos.Trinity" project with "--recurse-submodules" option.')
-    print_with_color(bcolors.FAIL, '       And run the script within the "ToolChains/bin" directory of the project.')
-    sys.exit(1)
+# if TOOLCHAINS_DIR_NAME != "ToolChains" or \
+#    not os.path.isdir(RUNTIME_DIR_PATH) or \
+#    not os.path.isdir(LAUNCHER_DIR_PATH):
+#     print_with_color(bcolors.FAIL, 'Error: You should "git clone" the "Elastos.Trinity" project with "--recurse-submodules" option.')
+#     print_with_color(bcolors.FAIL, '       And run the script within the "ToolChains/bin" directory of the project.')
+#     sys.exit(1)
 
-if args.target == "clean":
-    os.chdir(PROJECT_DIR_PATH)
-    remove_tree("Runtime/platforms")
-    remove_tree("Runtime/plugins")
+# if args.target == "clean":
+#     os.chdir(PROJECT_DIR_PATH)
+#     remove_tree("Runtime/platforms")
+#     remove_tree("Runtime/plugins")
 
 if args.target == "clobber":
-    os.chdir(PROJECT_DIR_PATH)
-    remove_tree("Launcher/www")
-    remove_tree("Launcher/node_modules")
-    if ela_plugin.isWindows():
-        run_cmd("rd Launcher/package-lock.json", True)
+    os.chdir(APP_DIR_PATH)
+    if isWindows():
+        run_cmd("rd package-lock.json", True)
     else:
-        run_cmd("rm Launcher/package-lock.json", True)
-    remove_tree("Runtime/node_modules")
-    remove_tree("Runtime/origin_platforms")
-    remove_tree("Runtime/origin_plugins")
-    remove_tree("Runtime/platforms")
-    remove_tree("Runtime/plugins")
-    remove_tree("Runtime/www")
-
-    os.chdir(IONIC_DIR_PATH)
-    dirs = os.listdir(IONIC_DIR_PATH)
-    for dir in dirs:
-        if not os.path.isfile(dir):
-            remove_tree(dir + "/www")
-            remove_tree(dir + "/node_modules")
-            if ela_plugin.isWindows():
-                run_cmd("rd " + dir + "/package-lock.json", True)
-            else:
-                run_cmd("rm " + dir + "/package-lock.json", True)
+        run_cmd("rm package-lock.json", True)
+    remove_tree("node_modules")
+    remove_tree("platforms")
+    remove_tree("plugins")
+    remove_tree("www")
 
 if args.target == "plugin":
     if args.target_path == None:
@@ -364,101 +297,44 @@ if args.target == "plugin":
         exit(0)
     ela_plugin.re_install_plugin(os.path.join(PROJECT_DIR_PATH, args.target_path))
 
-if args.target == "all" or args.target == "launcher":
-    os.chdir(LAUNCHER_DIR_PATH)
-
-    if build_apps:
-        run_cmd("npm install")
-        if ela_plugin.isWindows():
-            run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
-            run_cmd("ionic build --prod")
-        else:
-            run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic build --prod")
-    copy_tree("www", RUNTIME_DIR_PATH + "/www/launcher/")
-
-if args.target == "launcher":
-    # build DIDSession
-    dapp_dir = os.path.join(PROJECT_DIR_PATH, "Dapps/Ionic/DIDSession")
-    build_app(dapp_dir, build_platform, build_apps, "www")
-
-if args.target == "all" or args.target == "dapp":
-    if args.target_path == None:
-        os.chdir(DAPPS_DIR_PATH)
-        dirs = os.listdir(IONIC_DIR_PATH)
-        for dir in dirs:
-            dapp_dir = os.path.join(IONIC_DIR_PATH, dir)
-            if os.path.isdir(dapp_dir):
-                build_app(dapp_dir, build_platform, build_apps, "www")
-    else:
-        dapp_dir = os.path.join(PROJECT_DIR_PATH, args.target_path)
-        build_app(dapp_dir, build_platform, build_apps, "www")
-
-if args.target == "partner":
-    if args.target_path == None:
-        show_partnerapps()
-        print_with_color(bcolors.FAIL, "You must specify the dapp name: build partner -p dappname")
-        exit(0)
-    find_app = False
-    partnerapps_dict = load_partnerapps()
-    for app in partnerapps_dict['partnerapps']:
-        if args.target_path == app['name']:
-            find_app = True
-            build_partnerapp(partnerapps_dict['apps_fullpath'], app, build_platform)
-    if not find_app:
-        print_with_color(bcolors.FAIL, "Can't find the dapp:" + args.target_path)
-        show_partnerapps()
-
-if args.target == "partners":
-    if args.delete:
-        delete_partnerapps()
-    else:
-        build_partnerapps(build_platform)
-
-if args.target == "all" or args.target == "launcher" or args.target == "runtime":
-    os.chdir(RUNTIME_DIR_PATH)
-    copy_tree("www_files", "www", False)
-    updateConfig()
-    ela_plugin.plugin_prepare(True)
+if args.target == "app":
+    os.chdir(APP_DIR_PATH)
     run_cmd("npm install")
+    run_cmd("ionic build --prod")
 
-    print_with_color(bcolors.OKGREEN, 'Build platform:'), build_platform
-    ela_xml.update_xml(RUNTIME_DIR_PATH + '/config.xml', build_platform)
-    updatePackageJson(RUNTIME_DIR_PATH + '/package.json', build_platform)
-
-    if "ios" in build_platform and not args.skippodupdate:
-        print_with_color(bcolors.OKCYAN, "If you do not want to call 'pod repo update', you can add parameter for build '--skippodupdate'")
-        # update pod frameworks
-        run_cmd('pod repo update')
+    # print_with_color(bcolors.OKGREEN, 'Build platform:'), build_platform
+    # ela_xml.update_xml(RUNTIME_DIR_PATH + '/config.xml', build_platform)
+    # updatePackageJson(RUNTIME_DIR_PATH + '/package.json', build_platform)
 
     run_cmd("cordova prepare")
 
-    if "electron" in build_platform:
-        #ela_plugin.install_electron()
-        ela_plugin.copy_electron_files()
-        ela_plugin.install_titlebar()
-        os.chdir(ELECTRON_TITLEBAR_DIR_PATH)
-        copy_tree("www", RUNTIME_DIR_PATH + "/www/shared-titlebar")
-        os.chdir(RUNTIME_DIR_PATH)
-        copy_tree("plugin_src", "www/plugin_src")
-        run_cmd("cordova prepare")
+    # if "electron" in build_platform:
+    #     #ela_plugin.install_electron()
+    #     ela_plugin.copy_electron_files()
+    #     ela_plugin.install_titlebar()
+    #     os.chdir(ELECTRON_TITLEBAR_DIR_PATH)
+    #     copy_tree("www", RUNTIME_DIR_PATH + "/www/shared-titlebar")
+    #     os.chdir(RUNTIME_DIR_PATH)
+    #     copy_tree("plugin_src", "www/plugin_src")
+    #     run_cmd("cordova prepare")
 
-        print("'cd Runtime/platforms/electron/www', to start in dev mode -> enter:")
-        print("windows: 'electron .'")
-        print("ubuntu: 'sudo electron --no-sandbox .'")
+    #     print("'cd Runtime/platforms/electron/www', to start in dev mode -> enter:")
+    #     print("windows: 'electron .'")
+    #     print("ubuntu: 'sudo electron --no-sandbox .'")
 
-    add_firebase()
-    # Remove ionic wallet app from built-in only for ios
-    #run_cmd("cd platforms/ios/www/built-in/org.elastos.trinity.dapp.wallet && ls | grep -v 'assets' | xargs rm -rf", True)
-    os.chdir(RUNTIME_DIR_PATH)
+    # add_firebase()
+    # # Remove ionic wallet app from built-in only for ios
+    # #run_cmd("cd platforms/ios/www/built-in/org.elastos.trinity.dapp.wallet && ls | grep -v 'assets' | xargs rm -rf", True)
+    # os.chdir(RUNTIME_DIR_PATH)
 
-    if args.build:
-        if "android" in build_platform:
-            # TODO: Need set the ANDROID_NDK_HOME
-            run_cmd("cordova build android " + build_type + " " + build_arg)
-        if "electron" in build_platform:
-            run_cmd("cordova build electron " + build_type + " " + build_arg)
-        if "ios" in build_platform:
-            run_cmd("cordova build ios " + build_type + " " + build_arg)
+    # if args.build:
+    #     if "android" in build_platform:
+    #         # TODO: Need set the ANDROID_NDK_HOME
+    #         run_cmd("cordova build android " + build_type + " " + build_arg)
+    #     if "electron" in build_platform:
+    #         run_cmd("cordova build electron " + build_type + " " + build_arg)
+    #     if "ios" in build_platform:
+    #         run_cmd("cordova build ios " + build_type + " " + build_arg)
 
 
 elapsed = timeit.default_timer() - startTime
