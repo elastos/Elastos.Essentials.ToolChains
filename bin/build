@@ -124,6 +124,16 @@ def copy_tree(src, dst, clean=True):
     else:
         print_with_color(bcolors.FAIL, "Copy error:" + src + " is not a directory.")
 
+def plugin_ts2js():
+    dirs = os.listdir(PLUGIN_DIR_PATH)
+    for dir in dirs:
+        pluginpath = os.path.join(PLUGIN_DIR_PATH, dir)
+        print("Converting TS to JS with plugin sub-dir: "+pluginpath)
+        if os.path.isdir(pluginpath):
+            tsconfig = os.path.join(pluginpath, "www/tsconfig.json")
+            if os.path.isfile(tsconfig):
+                run_cmd("tsc --build " + tsconfig)
+
 # def get_appid(manifest):
 #     file_in = open(manifest, "r")
 #     data = json.load(file_in)
@@ -298,6 +308,7 @@ if args.target == "plugin":
     ela_plugin.re_install_plugin(os.path.join(PROJECT_DIR_PATH, args.target_path))
 
 if args.target == "app":
+    plugin_ts2js()
     os.chdir(APP_DIR_PATH)
     run_cmd("npm install")
     run_cmd("ionic build --prod")
