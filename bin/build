@@ -16,7 +16,7 @@ import timeit
 from collections import OrderedDict
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../lib'))
-# import ela_plugin
+import ela_plugin
 # import ela_xml
 
 class bcolors:
@@ -36,11 +36,14 @@ class bcolors:
 
 parser = argparse.ArgumentParser(description='Build the Elastor.Trinity project.',
                                  formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('target', metavar='TARGET', choices=['app', 'clobber', "plugin"],
+parser.add_argument('target', metavar='TARGET', choices=['app', 'all', 'clean', 'clobber', 'cordova', 'plugin'],
                     help=textwrap.dedent('''\
                          Specify the target to build.
                          app: build app;
+                         all: build app and cordova;
+                         clean: delete platforms and plugins;
                          clobber: delete all build files;
+                         cordova: cordova prepare and build;
                          plugin: reintall the specify plugin;
                      '''))
 parser.add_argument('-p', '--path', dest='target_path', metavar='PATH', required=False,
@@ -91,6 +94,9 @@ TOOLCHAINS_DIR_NAME=os.path.basename(TOOLCHAINS_DIR_PATH)
 PROJECT_DIR_PATH=os.path.join(TOOLCHAINS_DIR_PATH, "..")
 APP_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "App")
 PLUGIN_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Plugins")
+WWW_MIRROR_ANDROID=os.path.join(APP_DIR_PATH, "platforms/android/app/src/main/assets/www/")
+WWW_MIRROR_IOS=os.path.join(APP_DIR_PATH, "platforms/ios/www/")
+WWW_MIRROR_ELECTRON=os.path.join(APP_DIR_PATH, "platforms/electron/www/")
 
 
 ###############
@@ -124,39 +130,49 @@ def copy_tree(src, dst, clean=True):
     else:
         print_with_color(bcolors.FAIL, "Copy error:" + src + " is not a directory.")
 
-def plugin_ts2js():
-    dirs = os.listdir(PLUGIN_DIR_PATH)
-    for dir in dirs:
-        pluginpath = os.path.join(PLUGIN_DIR_PATH, dir)
-        print("Converting TS to JS with plugin sub-dir: "+pluginpath)
-        if os.path.isdir(pluginpath):
-            tsconfig = os.path.join(pluginpath, "www/tsconfig.json")
-            if os.path.isfile(tsconfig):
-                run_cmd("tsc --build " + tsconfig)
-
 # def get_appid(manifest):
 #     file_in = open(manifest, "r")
 #     data = json.load(file_in)
 #     return data['id']
 
-# def add_firebase():
-#     if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/GoogleService-Info.plist')):
-#         print_with_color(bcolors.WARNING, "Can not find GoogleService-Info.plist!")
-#         return
-#     if not os.path.isfile(os.path.join(RUNTIME_DIR_PATH + '/google-services.json')):
-#         print_with_color(bcolors.WARNING, "Can not find google-services.json!")
-#         return
+# build app and copy the www/*
+def build_app(app_path, needBuild, output="www"):
+    print_with_color(bcolors.OKCYAN, "\r\n-------------------- Building APP --------------------")
+    os.chdir(app_path)
 
-#     # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
-#     # 9.1.2-cli is ok
-#     sys = platform.system()
-#     if sys != "Darwin":
-#         run_cmd("cordova platform rm ios")
+    if needBuild:
+        run_cmd("npm install")
+        if ela_plugin.isWindows():
+            run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
+            run_cmd("ionic build --prod")
+        else:
+            run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic build --prod")
 
-#     run_cmd("npm install -g xml-js")
+    if os.path.isdir(WWW_MIRROR_ANDROID):
+        copy_tree(output, WWW_MIRROR_ANDROID)
+    if os.path.isdir(WWW_MIRROR_IOS):
+        copy_tree(output, WWW_MIRROR_IOS)
+    if os.path.isdir(WWW_MIRROR_ELECTRON):
+        copy_tree(output, WWW_MIRROR_ELECTRON)
 
-#     cmd="cordova plugin add cordova-plugin-firebasex"
-#     run_cmd(cmd)
+def add_firebase():
+    if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
+        print_with_color(bcolors.WARNING, "Can not find GoogleService-Info.plist!")
+        return
+    if not os.path.isfile(os.path.join(APP_DIR_PATH + '/google-services.json')):
+        print_with_color(bcolors.WARNING, "Can not find google-services.json!")
+        return
+
+    # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
+    # 9.1.2-cli is ok
+    sys = platform.system()
+    if sys != "Darwin":
+        run_cmd("cordova platform rm ios")
+
+    run_cmd("npm install -g xml-js")
+
+    cmd="cordova plugin add cordova-plugin-firebasex"
+    run_cmd(cmd)
 
 # def load_partnerapps():
 #     config_path = os.path.join(os.path.dirname(SCRIPT_PATH), "partners.json")
@@ -273,9 +289,18 @@ def plugin_ts2js():
 #     file_out.write(json.dumps(data, indent=2))
 #     file_out.close()
 
+def clean_cordova():
+    os.chdir(APP_DIR_PATH)
+    if isWindows():
+        run_cmd("rd package-lock.json", True)
+    else:
+        run_cmd("rm package-lock.json", True)
+    remove_tree("platforms")
+    remove_tree("plugins")
+
 startTime = timeit.default_timer()
 
-# ela_plugin.setup_paths(RUNTIME_DIR_PATH, PLUGIN_DIR_PATH)
+ela_plugin.setup_paths(APP_DIR_PATH, PLUGIN_DIR_PATH)
 
 # if TOOLCHAINS_DIR_NAME != "ToolChains" or \
 #    not os.path.isdir(RUNTIME_DIR_PATH) or \
@@ -284,21 +309,14 @@ startTime = timeit.default_timer()
 #     print_with_color(bcolors.FAIL, '       And run the script within the "ToolChains/bin" directory of the project.')
 #     sys.exit(1)
 
-# if args.target == "clean":
-#     os.chdir(PROJECT_DIR_PATH)
-#     remove_tree("Runtime/platforms")
-#     remove_tree("Runtime/plugins")
+if args.target == "clean":
+    clean_cordova()
 
 if args.target == "clobber":
     os.chdir(APP_DIR_PATH)
-    if isWindows():
-        run_cmd("rd package-lock.json", True)
-    else:
-        run_cmd("rm package-lock.json", True)
     remove_tree("node_modules")
-    remove_tree("platforms")
-    remove_tree("plugins")
     remove_tree("www")
+    clean_cordova()
 
 if args.target == "plugin":
     if args.target_path == None:
@@ -307,11 +325,15 @@ if args.target == "plugin":
         exit(0)
     ela_plugin.re_install_plugin(os.path.join(PROJECT_DIR_PATH, args.target_path))
 
-if args.target == "app":
-    plugin_ts2js()
-    os.chdir(APP_DIR_PATH)
-    run_cmd("npm install")
-    run_cmd("ionic build --prod")
+if args.target == "all" or args.target == "app":
+    build_app(APP_DIR_PATH, True)
+
+if args.target == "all" or args.target == "cordova":
+    # For tsc
+    TSC_PATH= APP_DIR_PATH + '/node_modules/typescript/bin'
+    os.environ["PATH"]=os.environ["PATH"] + ":" + TSC_PATH
+
+    ela_plugin.plugin_prepare(True)
 
     # print_with_color(bcolors.OKGREEN, 'Build platform:'), build_platform
     # ela_xml.update_xml(RUNTIME_DIR_PATH + '/config.xml', build_platform)
@@ -333,19 +355,16 @@ if args.target == "app":
     #     print("windows: 'electron .'")
     #     print("ubuntu: 'sudo electron --no-sandbox .'")
 
-    # add_firebase()
-    # # Remove ionic wallet app from built-in only for ios
-    # #run_cmd("cd platforms/ios/www/built-in/org.elastos.trinity.dapp.wallet && ls | grep -v 'assets' | xargs rm -rf", True)
-    # os.chdir(RUNTIME_DIR_PATH)
+    add_firebase()
 
-    # if args.build:
-    #     if "android" in build_platform:
-    #         # TODO: Need set the ANDROID_NDK_HOME
-    #         run_cmd("cordova build android " + build_type + " " + build_arg)
-    #     if "electron" in build_platform:
-    #         run_cmd("cordova build electron " + build_type + " " + build_arg)
-    #     if "ios" in build_platform:
-    #         run_cmd("cordova build ios " + build_type + " " + build_arg)
+    if args.build:
+        if "android" in build_platform:
+            # TODO: Need set the ANDROID_NDK_HOME
+            run_cmd("cordova build android " + build_type + " " + build_arg)
+        if "electron" in build_platform:
+            run_cmd("cordova build electron " + build_type + " " + build_arg)
+        if "ios" in build_platform:
+            run_cmd("cordova build ios " + build_type + " " + build_arg)
 
 
 elapsed = timeit.default_timer() - startTime
