@@ -61,8 +61,8 @@ def plugin_prepare(check_update=False):
     if os.path.isdir(app_plugin_path):
         if check_update:
             plugin_update()
-    else:
-        plugin_convertTS2JS()
+    # else:
+    #     plugin_convertTS2JS()
 
 def plugin_update_dir(plugin_dir):
     global app_dir_path, plugins_dir_path, app_plugin_path
@@ -92,28 +92,28 @@ def plugin_update():
 
     plugin_update_dir(plugins_dir_path)
 
-# first build
-def plugin_convertTS2JS():
-    global app_dir_path, plugins_dir_path, app_plugin_path
-    ensure_paths_are_setup()
+# # first build
+# def plugin_convertTS2JS():
+#     global app_dir_path, plugins_dir_path, app_plugin_path
+#     ensure_paths_are_setup()
 
-    plugin_convertTS2JS_dir(plugins_dir_path)
+#     plugin_convertTS2JS_dir(plugins_dir_path)
 
 
-def plugin_convertTS2JS_dir(plugin_dir):
-    global app_dir_path, plugins_dir_path, app_plugin_path
-    ensure_paths_are_setup()
+# def plugin_convertTS2JS_dir(plugin_dir):
+#     global app_dir_path, plugins_dir_path, app_plugin_path
+#     ensure_paths_are_setup()
 
-    #print("Converting TS to JS with plugin dir: "+plugin_dir)
+#     #print("Converting TS to JS with plugin dir: "+plugin_dir)
 
-    dirs = os.listdir(plugin_dir)
-    for dir in dirs:
-        filepath = os.path.join(plugin_dir, dir)
-        #print("Converting TS to JS with plugin sub-dir: "+filepath)
-        if os.path.isdir(filepath):
-            tsconfig = os.path.join(filepath, "www/tsconfig.json")
-            if os.path.isfile(tsconfig):
-                run_cmd("tsc --build " + tsconfig)
+#     dirs = os.listdir(plugin_dir)
+#     for dir in dirs:
+#         filepath = os.path.join(plugin_dir, dir)
+#         #print("Converting TS to JS with plugin sub-dir: "+filepath)
+#         if os.path.isdir(filepath):
+#             tsconfig = os.path.join(filepath, "www/tsconfig.json")
+#             if os.path.isfile(tsconfig):
+#                 run_cmd("tsc --build " + tsconfig)
 
 def get_pluginId(directory):
     global app_dir_path, plugins_dir_path, app_plugin_path
@@ -141,9 +141,9 @@ def re_install_plugin(plugindir, restore = True):
     global app_dir_path, plugins_dir_path, app_plugin_path
     ensure_paths_are_setup()
 
-    tsconfig = plugindir + "/www/tsconfig.json"
-    if os.path.isfile(tsconfig):
-        run_cmd("tsc --build " + tsconfig)
+    # tsconfig = plugindir + "/www/tsconfig.json"
+    # if os.path.isfile(tsconfig):
+    #     run_cmd("tsc --build " + tsconfig)
     os.chdir(app_dir_path)
     backup_files()
     run_cmd("cordova plugin rm " + get_pluginId(plugindir), True)

@@ -34,7 +34,7 @@ class bcolors:
 ### SCRIPT PARAMS ###
 #####################
 
-parser = argparse.ArgumentParser(description='Build the Elastor.Trinity project.',
+parser = argparse.ArgumentParser(description='Build the Elastor.Essentials project.',
                                  formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('target', metavar='TARGET', choices=['app', 'all', 'clean', 'clobber', 'cordova', 'plugin'],
                     help=textwrap.dedent('''\
@@ -315,6 +315,8 @@ if args.target == "clean":
 if args.target == "clobber":
     os.chdir(APP_DIR_PATH)
     remove_tree("node_modules")
+    remove_tree("origin_platforms")
+    remove_tree("origin_plugins")
     remove_tree("www")
     clean_cordova()
 
@@ -329,11 +331,12 @@ if args.target == "all" or args.target == "app":
     build_app(APP_DIR_PATH, True)
 
 if args.target == "all" or args.target == "cordova":
+    os.chdir(APP_DIR_PATH)
     # For tsc
-    TSC_PATH= APP_DIR_PATH + '/node_modules/typescript/bin'
-    os.environ["PATH"]=os.environ["PATH"] + ":" + TSC_PATH
+    # TSC_PATH= APP_DIR_PATH + '/node_modules/typescript/bin'
+    # os.environ["PATH"]=os.environ["PATH"] + ":" + TSC_PATH
 
-    ela_plugin.plugin_prepare(True)
+    # ela_plugin.plugin_prepare(True)
 
     # print_with_color(bcolors.OKGREEN, 'Build platform:'), build_platform
     # ela_xml.update_xml(RUNTIME_DIR_PATH + '/config.xml', build_platform)
