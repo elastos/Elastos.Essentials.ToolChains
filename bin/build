@@ -17,6 +17,7 @@ from collections import OrderedDict
 
 sys.path.append(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../lib'))
 import ela_plugin
+import ela_util
 # import ela_xml
 
 class bcolors:
@@ -141,7 +142,6 @@ def build_app(app_path, needBuild, output="www"):
     os.chdir(app_path)
 
     if needBuild:
-        run_cmd("npm install")
         if ela_plugin.isWindows():
             run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
             run_cmd("ionic build --prod")
@@ -157,10 +157,10 @@ def build_app(app_path, needBuild, output="www"):
 
 def add_firebase():
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
-        print_with_color(bcolors.WARNING, "Can not find GoogleService-Info.plist!")
+        print_with_color(bcolors.WARNING, "Can not find GoogleService-Info.plist, Do not add firebase plugin!")
         return
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/google-services.json')):
-        print_with_color(bcolors.WARNING, "Can not find google-services.json!")
+        print_with_color(bcolors.WARNING, "Can not find google-services.json, Do not add firebase plugin!")
         return
 
     # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
@@ -302,12 +302,10 @@ startTime = timeit.default_timer()
 
 ela_plugin.setup_paths(APP_DIR_PATH, PLUGIN_DIR_PATH)
 
-# if TOOLCHAINS_DIR_NAME != "ToolChains" or \
-#    not os.path.isdir(RUNTIME_DIR_PATH) or \
-#    not os.path.isdir(LAUNCHER_DIR_PATH):
-#     print_with_color(bcolors.FAIL, 'Error: You should "git clone" the "Elastos.Trinity" project with "--recurse-submodules" option.')
-#     print_with_color(bcolors.FAIL, '       And run the script within the "ToolChains/bin" directory of the project.')
-#     sys.exit(1)
+if TOOLCHAINS_DIR_NAME != "ToolChains" or not os.path.isdir(APP_DIR_PATH):
+    print_with_color(bcolors.FAIL, 'Error: You should "git clone" the "Elastos.Essentials" project with "--recurse-submodules" option.')
+    print_with_color(bcolors.FAIL, '       And run the script within the "ToolChains/bin" directory of the project.')
+    sys.exit(1)
 
 if args.target == "clean":
     clean_cordova()
@@ -327,15 +325,16 @@ if args.target == "plugin":
         exit(0)
     ela_plugin.re_install_plugin(os.path.join(PROJECT_DIR_PATH, args.target_path))
 
-if args.target == "all" or args.target == "app":
-    build_app(APP_DIR_PATH, True)
+if args.target == "all" or args.target == "cordova" or args.target == "app":
+    os.chdir(APP_DIR_PATH)
+
+    # Make sure to have at least an empty www and platforms folder in the runtime folder, so that cordova doesn't complain we are not in a cordova folder
+    ela_util.safeMkdir(os.path.join(APP_DIR_PATH, "www"))
+    ela_util.safeMkdir(os.path.join(APP_DIR_PATH, "platforms"))
+
+    run_cmd("npm install")
 
 if args.target == "all" or args.target == "cordova":
-    os.chdir(APP_DIR_PATH)
-    # For tsc
-    # TSC_PATH= APP_DIR_PATH + '/node_modules/typescript/bin'
-    # os.environ["PATH"]=os.environ["PATH"] + ":" + TSC_PATH
-
     # ela_plugin.plugin_prepare(True)
 
     # print_with_color(bcolors.OKGREEN, 'Build platform:'), build_platform
@@ -360,6 +359,10 @@ if args.target == "all" or args.target == "cordova":
 
     add_firebase()
 
+if args.target == "all" or args.target == "app":
+    build_app(APP_DIR_PATH, True)
+
+if args.target == "all":
     if args.build:
         if "android" in build_platform:
             # TODO: Need set the ANDROID_NDK_HOME
