@@ -131,6 +131,20 @@ def copy_tree(src, dst, clean=True):
     else:
         print_with_color(bcolors.FAIL, "Copy error:" + src + " is not a directory.")
 
+# check the ANDROID_NDK_HOME and ANDROID_SDK_ROOT
+def setup_android_ndk():
+    if "ANDROID_NDK_HOME" not in os.environ:
+        if "ANDROID_SDK_ROOT" not in os.environ:
+            if "ANDROID_HOME" in os.environ:
+                os.environ["ANDROID_SDK_ROOT"]=os.environ["ANDROID_HOME"]
+                print_with_color(bcolors.WARNING, "Use ANDROID_SDK_ROOT! Support for ANDROID_HOME is deprecated")
+            else:
+                print_with_color(bcolors.FAIL, "You should set ANDROID_SDK_ROOT")
+                return
+
+        print_with_color(bcolors.WARNING, "You should set ANDROID_NDK_HOME")
+        os.environ["ANDROID_NDK_HOME"]=os.environ["ANDROID_SDK_ROOT"] + "/ndk-bundle"
+
 # def get_appid(manifest):
 #     file_in = open(manifest, "r")
 #     data = json.load(file_in)
@@ -362,10 +376,12 @@ if args.target == "all" or args.target == "cordova":
 if args.target == "all" or args.target == "app":
     build_app(APP_DIR_PATH, True)
 
-if args.target == "all":
+if args.target == "all" or args.target == "cordova":
     if args.build:
         if "android" in build_platform:
-            # TODO: Need set the ANDROID_NDK_HOME
+            # check ANDROID_NDK_HOME
+            setup_android_ndk()
+
             run_cmd("cordova build android " + build_type + " " + build_arg)
         if "electron" in build_platform:
             run_cmd("cordova build electron " + build_type + " " + build_arg)
