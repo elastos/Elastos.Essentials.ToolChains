@@ -145,11 +145,6 @@ def setup_android_ndk():
         print_with_color(bcolors.WARNING, "You should set ANDROID_NDK_HOME")
         os.environ["ANDROID_NDK_HOME"]=os.environ["ANDROID_SDK_ROOT"] + "/ndk-bundle"
 
-# def get_appid(manifest):
-#     file_in = open(manifest, "r")
-#     data = json.load(file_in)
-#     return data['id']
-
 # build app and copy the www/*
 def build_app(app_path, needBuild, output="www"):
     print_with_color(bcolors.OKCYAN, "\r\n-------------------- Building APP --------------------")
@@ -188,84 +183,6 @@ def add_firebase():
     cmd="cordova plugin add cordova-plugin-firebasex"
     run_cmd(cmd)
 
-# def load_partnerapps():
-#     config_path = os.path.join(os.path.dirname(SCRIPT_PATH), "partners.json")
-#     with open(config_path,'r') as load_f:
-#         partnerapps_dict = json.load(load_f)
-#         apps_path = partnerapps_dict['dapppath']
-#         if apps_path.strip() == "":
-#             apps_path = "Dapps/Partner"
-#         apps_fullpath = os.path.join(PROJECT_DIR_PATH, apps_path)
-#         partnerapps_dict['apps_fullpath'] = apps_fullpath
-
-#         if not os.path.isdir(apps_fullpath):
-#             os.makedirs(apps_fullpath)
-#         return partnerapps_dict
-
-# def show_partnerapps():
-#     partnerapps_dict = load_partnerapps()
-#     print("  All partner apps:")
-#     for app in partnerapps_dict['partnerapps']:
-#         print("    " + app['name'])
-
-# def get_code(app):
-#     print("Get the code: " + app['name'])
-#     if os.path.isdir(app['name']):
-#         os.chdir(app['name'])
-#         run_cmd("git checkout master")
-#         run_cmd("git pull")
-#     else:
-#         run_cmd("git clone " + app['repourl'] + " " + app['name'])
-#         os.chdir(app['name'])
-
-#     if app['commit'].strip() != "":
-#         run_cmd("git checkout " + app['commit'])
-#     elif app['tag'].strip() != "":
-#         run_cmd("git fetch --tag")
-#         run_cmd("git checkout " + app['tag'])
-
-# # Get the code of the partner app and build
-# def build_partnerapp(apps_fullpath, app, platform):
-#     os.chdir(apps_fullpath)
-
-#     app_fullpath = os.path.join(apps_fullpath, app['name'])
-#     if "folder" in app:
-#         app_fullpath = os.path.join(app_fullpath, app['folder'])
-
-#     if args.delete:
-#         return delete_app(app_fullpath)
-#     else:
-#         get_code(app)
-
-#         needBuild = True
-#         output = "www"
-
-#         if "outputPath" in app:
-#             # don't build, just copy
-#             needBuild = False
-#             output = app['outputPath']
-
-#         build_app(app_fullpath, platform, needBuild, output)
-
-# # Get the code of all partner apps and build
-# def build_partnerapps(platform):
-#     partnerapps_dict = load_partnerapps()
-#     apps_fullpath = partnerapps_dict['apps_fullpath']
-
-#     for app in partnerapps_dict['partnerapps']:
-#         if platform in app['platforms']:
-#             build_partnerapp(apps_fullpath, app, platform)
-
-# def delete_partnerapps():
-#     partnerapps_dict = load_partnerapps()
-#     apps_fullpath = partnerapps_dict['apps_fullpath']
-
-#     for app in partnerapps_dict['partnerapps']:
-#         app_fullpath = os.path.join(apps_fullpath, app['name'])
-#         if "folder" in app:
-#             app_fullpath = os.path.join(app_fullpath, app['folder'])
-#         delete_app(app_fullpath)
-
 # def updateJsonFile(jsonfile, key, value):
 #     file_in = open(jsonfile, "r")
 #     data = json.load(file_in, object_pairs_hook=OrderedDict)
@@ -293,15 +210,15 @@ def add_firebase():
 #     if args.buildvariant:
 #         updateConfigFile("build.variant", args.buildvariant)
 
-# def updatePackageJson(path, platforms):
-#     file_in = open(path, "r")
-#     data = json.load(file_in, object_pairs_hook=OrderedDict)
-#     data['cordova']['platforms'] = platforms
-#     file_in.close()
+def updatePackageJson(path, platforms):
+    file_in = open(path, "r")
+    data = json.load(file_in, object_pairs_hook=OrderedDict)
+    data['cordova']['platforms'] = platforms
+    file_in.close()
 
-#     file_out = open(path, 'w')
-#     file_out.write(json.dumps(data, indent=2))
-#     file_out.close()
+    file_out = open(path, 'w')
+    file_out.write(json.dumps(data, indent=2))
+    file_out.close()
 
 def clean_cordova():
     os.chdir(APP_DIR_PATH)
@@ -351,9 +268,8 @@ if args.target == "all" or args.target == "cordova" or args.target == "app":
 if args.target == "all" or args.target == "cordova":
     # ela_plugin.plugin_prepare(True)
 
-    # print_with_color(bcolors.OKGREEN, 'Build platform:'), build_platform
-    # ela_xml.update_xml(RUNTIME_DIR_PATH + '/config.xml', build_platform)
-    # updatePackageJson(RUNTIME_DIR_PATH + '/package.json', build_platform)
+    print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
+    updatePackageJson(APP_DIR_PATH + '/package.json', build_platform)
 
     run_cmd("cordova prepare")
 

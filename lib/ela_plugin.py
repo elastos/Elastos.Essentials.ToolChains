@@ -146,7 +146,8 @@ def re_install_plugin(plugindir, restore = True):
     #     run_cmd("tsc --build " + tsconfig)
     os.chdir(app_dir_path)
     backup_files()
-    run_cmd("cordova plugin rm " + get_pluginId(plugindir), True)
+    # Some plugin is required by the other, so add --force
+    run_cmd("cordova plugin rm " + get_pluginId(plugindir) + " --force", True)
     run_cmd("cordova plugin add " + os.path.relpath(plugindir))
     if restore:
         restore_files()
