@@ -95,6 +95,7 @@ TOOLCHAINS_DIR_NAME=os.path.basename(TOOLCHAINS_DIR_PATH)
 PROJECT_DIR_PATH=os.path.join(TOOLCHAINS_DIR_PATH, "..")
 APP_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "App")
 PLUGIN_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Plugins")
+PLATFORM_PATH=os.path.join(APP_DIR_PATH, "platforms")
 WWW_MIRROR_ANDROID=os.path.join(APP_DIR_PATH, "platforms/android/app/src/main/assets/www/")
 WWW_MIRROR_IOS=os.path.join(APP_DIR_PATH, "platforms/ios/www/")
 WWW_MIRROR_ELECTRON=os.path.join(APP_DIR_PATH, "platforms/electron/www/")
@@ -111,19 +112,19 @@ def print_with_color(color, message):
     print(color + message + bcolors.ENDC)
 
 def run_cmd(cmd, ignore_error=False):
-    print("Running: " + cmd)
+    print_with_color(bcolors.OKCYAN, "Running: " + cmd)
     ret = subprocess.call(cmd, shell=True)
     if not ignore_error and ret != 0:
         print_with_color(bcolors.FAIL, "Fail to: " + cmd)
         sys.exit(ret)
 
 def remove_tree(directory):
-    print("Removing: " + directory)
+    print_with_color(bcolors.OKCYAN, "Removing: " + directory)
     if os.path.isdir(directory):
         dir_util.remove_tree(directory)
 
 def copy_tree(src, dst, clean=True):
-    print("Copying " + src + " To " + dst)
+    print_with_color(bcolors.OKCYAN, "Copying " + src + " To " + dst)
     if clean:
         remove_tree(dst)
     if os.path.isdir(src):
@@ -145,6 +146,7 @@ def setup_android_ndk():
         print_with_color(bcolors.WARNING, "You should set ANDROID_NDK_HOME")
         os.environ["ANDROID_NDK_HOME"]=os.environ["ANDROID_SDK_ROOT"] + "/ndk-bundle"
 
+# To be removed, should use ionic cordova build.
 # build app and copy the www/*
 def build_app(app_path, needBuild, output="www"):
     print_with_color(bcolors.OKCYAN, "\r\n-------------------- Building APP --------------------")
@@ -166,10 +168,10 @@ def build_app(app_path, needBuild, output="www"):
 
 def add_firebase():
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
-        print_with_color(bcolors.WARNING, "Can not find GoogleService-Info.plist, Do not add firebase plugin!")
+        print_with_color(bcolors.OKCYAN, "Can not find GoogleService-Info.plist, Do not add firebase plugin!")
         return
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/google-services.json')):
-        print_with_color(bcolors.WARNING, "Can not find google-services.json, Do not add firebase plugin!")
+        print_with_color(bcolors.OKCYAN, "Can not find google-services.json, Do not add firebase plugin!")
         return
 
     # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
@@ -182,33 +184,6 @@ def add_firebase():
 
     cmd="cordova plugin add cordova-plugin-firebasex"
     run_cmd(cmd)
-
-# def updateJsonFile(jsonfile, key, value):
-#     file_in = open(jsonfile, "r")
-#     data = json.load(file_in, object_pairs_hook=OrderedDict)
-#     file_in.close()
-
-#     data[key] = value
-
-#     file_out = open(jsonfile, 'w')
-#     file_out.write(json.dumps(data, indent=4))
-#     file_out.close()
-
-# def updateConfigFile(key, value):
-#     config_path = os.path.join(RUNTIME_DIR_PATH, "www/config/config.json")
-#     updateJsonFile(config_path, key, value)
-
-#     # update mirror config file
-#     if os.path.isfile(CONFIG_MIRROR_ANDROID):
-#         updateJsonFile(CONFIG_MIRROR_ANDROID, key, value)
-#     if os.path.isfile(CONFIG_MIRROR_IOS):
-#         updateJsonFile(CONFIG_MIRROR_IOS, key, value)
-
-# def updateConfig():
-#     if args.buildtype:
-#         updateConfigFile("build.type", args.buildtype)
-#     if args.buildvariant:
-#         updateConfigFile("build.variant", args.buildvariant)
 
 def updatePackageJson(path, platforms):
     file_in = open(path, "r")
@@ -228,6 +203,13 @@ def clean_cordova():
         run_cmd("rm package-lock.json", True)
     remove_tree("platforms")
     remove_tree("plugins")
+
+def check_platform_installed():
+    for platform in build_platform:
+        api_file = os.path.join(PLATFORM_PATH + '/' + platform + '/cordova/Api.js')
+        if not os.path.isfile(api_file):
+            return False
+    return True
 
 startTime = timeit.default_timer()
 
@@ -271,7 +253,19 @@ if args.target == "all" or args.target == "cordova":
     print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
     updatePackageJson(APP_DIR_PATH + '/package.json', build_platform)
 
-    run_cmd("cordova prepare")
+    retry_count  = 0
+    while True:
+        retry_count += 1
+        if retry_count <= 3:
+            run_cmd("cordova prepare")
+            if check_platform_installed():
+                break
+            else:
+                print_with_color(bcolors.WARNING, 'platform not installed. try to add platform again!')
+                clean_cordova()
+        else:
+            print_with_color(bcolors.FAIL, 'cordova prepare failed.')
+            sys.exit(1)
 
     # if "electron" in build_platform:
     #     #ela_plugin.install_electron()
@@ -289,20 +283,17 @@ if args.target == "all" or args.target == "cordova":
 
     add_firebase()
 
-if args.target == "all" or args.target == "app":
-    build_app(APP_DIR_PATH, True)
-
+# Must call 'ionic cordova build', otherwise the index.html will not load cordova.js
 if args.target == "all" or args.target == "cordova":
-    if args.build:
-        if "android" in build_platform:
-            # check ANDROID_NDK_HOME
-            setup_android_ndk()
+    if "android" in build_platform:
+        # check ANDROID_NDK_HOME
+        setup_android_ndk()
 
-            run_cmd("cordova build android " + build_type + " " + build_arg)
-        if "electron" in build_platform:
-            run_cmd("cordova build electron " + build_type + " " + build_arg)
-        if "ios" in build_platform:
-            run_cmd("cordova build ios " + build_type + " " + build_arg)
+        run_cmd("ionic cordova build android --prod " + build_type + " " + build_arg)
+    # if "electron" in build_platform:
+    #     run_cmd("ionic cordova build electron --prod " + build_type + " " + build_arg)
+    # if "ios" in build_platform:
+    #     run_cmd("ionic cordova build ios --prod " + build_type + " " + build_arg)
 
 
 elapsed = timeit.default_timer() - startTime
