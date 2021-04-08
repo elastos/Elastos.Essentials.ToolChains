@@ -73,11 +73,15 @@ else:
 
 if args.platform:
     if 'all' in args.platform:
-        build_platform=['android', 'ios', 'electron']
+        # use it when ios and electron is ready.
+        # build_platform=['android', 'ios', 'electron']
+        build_platform=['android']
     else:
         build_platform=args.platform
 else:
-    build_platform= ['android', 'ios']
+    # use it when ios is ready.
+    # build_platform= ['android', 'ios']
+    build_platform= ['android']
 
 if args.buildarg:
     build_arg=args.buildarg
