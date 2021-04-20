@@ -76,7 +76,7 @@ def checkout_branch(branchName, originBranch):
         sys.exit(1)
 
     os.chdir(PROJECT_DIR_PATH)
-    cmd = "git branch %s & git checkout %s && git reset --hard origin/%s"%(branchName,branchName,originBranch)
+    cmd = "git branch %s & true && git checkout %s && git reset --hard origin/%s"%(branchName,branchName,originBranch)
     run_cmd(cmd)
 
     # Maybe the branch already exist, so add "& true" to return true
