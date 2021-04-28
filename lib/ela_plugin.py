@@ -35,8 +35,12 @@ def setup_paths(_app_dir_path, _plugins_dir_path):
     ELECTRON_RENDERER_DIR_PATH=os.path.join(ELECTRON_DIR_PATH, "renderer")
     ELECTRON_SCRIPT_DIR_PATH=os.path.join(app_dir_path, "scripts/electron")
 
+    # For tsc : used for build plugin.
+    TSC_PATH= app_dir_path + '/node_modules/typescript/bin'
+    os.environ["PATH"]=os.environ["PATH"] + ":" + TSC_PATH
+
     # Dump a few info about used paths
-    print("Runtime path: "+app_dir_path)
+    print("App path: "+app_dir_path)
     print("Plugins path: "+plugins_dir_path)
 
 def ensure_paths_are_setup():
@@ -92,29 +96,6 @@ def plugin_update():
 
     plugin_update_dir(plugins_dir_path)
 
-# # first build
-# def plugin_convertTS2JS():
-#     global app_dir_path, plugins_dir_path, app_plugin_path
-#     ensure_paths_are_setup()
-
-#     plugin_convertTS2JS_dir(plugins_dir_path)
-
-
-# def plugin_convertTS2JS_dir(plugin_dir):
-#     global app_dir_path, plugins_dir_path, app_plugin_path
-#     ensure_paths_are_setup()
-
-#     #print("Converting TS to JS with plugin dir: "+plugin_dir)
-
-#     dirs = os.listdir(plugin_dir)
-#     for dir in dirs:
-#         filepath = os.path.join(plugin_dir, dir)
-#         #print("Converting TS to JS with plugin sub-dir: "+filepath)
-#         if os.path.isdir(filepath):
-#             tsconfig = os.path.join(filepath, "www/tsconfig.json")
-#             if os.path.isfile(tsconfig):
-#                 run_cmd("tsc --build " + tsconfig)
-
 def get_pluginId(directory):
     global app_dir_path, plugins_dir_path, app_plugin_path
     ensure_paths_are_setup()
@@ -141,9 +122,6 @@ def re_install_plugin(plugindir, restore = True):
     global app_dir_path, plugins_dir_path, app_plugin_path
     ensure_paths_are_setup()
 
-    # tsconfig = plugindir + "/www/tsconfig.json"
-    # if os.path.isfile(tsconfig):
-    #     run_cmd("tsc --build " + tsconfig)
     os.chdir(app_dir_path)
     backup_files()
     # Some plugin is required by the other, so add --force
@@ -157,11 +135,11 @@ def backup_files():
     ensure_paths_are_setup()
 
     os.chdir(app_dir_path)
-    if not os.path.isfile(os.path.join(app_dir_path + '/config.xml.buildbak')):
-        if isWindows():
-            run_cmd('copy config.xml config.xml.buildbak')
-        else:
-            run_cmd('cp config.xml config.xml.buildbak')
+    # if not os.path.isfile(os.path.join(app_dir_path + '/config.xml.buildbak')):
+    #     if isWindows():
+    #         run_cmd('copy config.xml config.xml.buildbak')
+    #     else:
+    #         run_cmd('cp config.xml config.xml.buildbak')
     if not os.path.isfile(os.path.join(app_dir_path + '/package.json.buildbak')):
         if isWindows():
             run_cmd('copy package.json package.json.buildbak')
@@ -173,11 +151,11 @@ def restore_files():
     ensure_paths_are_setup()
 
     os.chdir(app_dir_path)
-    if os.path.isfile(os.path.join(app_dir_path + '/config.xml.buildbak')):
-        if isWindows():
-            run_cmd('move config.xml.buildbak config.xml')
-        else:
-            run_cmd('mv config.xml.buildbak config.xml')
+    # if os.path.isfile(os.path.join(app_dir_path + '/config.xml.buildbak')):
+    #     if isWindows():
+    #         run_cmd('move config.xml.buildbak config.xml')
+    #     else:
+    #         run_cmd('mv config.xml.buildbak config.xml')
     if os.path.isfile(os.path.join(app_dir_path + '/package.json.buildbak')):
         if isWindows():
             run_cmd('move package.json.buildbak package.json')

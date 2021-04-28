@@ -252,8 +252,6 @@ if args.target == "all" or args.target == "cordova" or args.target == "app":
     run_cmd("npm install")
 
 if args.target == "all" or args.target == "cordova":
-    # ela_plugin.plugin_prepare(True)
-
     print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
     updatePackageJson(APP_DIR_PATH + '/package.json', build_platform)
 
