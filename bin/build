@@ -294,8 +294,8 @@ if args.target == "all" or args.target == "cordova":
         run_cmd("ionic cordova build android --prod " + build_type + " " + build_arg)
     # if "electron" in build_platform:
     #     run_cmd("ionic cordova build electron --prod " + build_type + " " + build_arg)
-    # if "ios" in build_platform:
-    #     run_cmd("ionic cordova build ios --prod " + build_type + " " + build_arg)
+    if "ios" in build_platform:
+        run_cmd("ionic cordova build ios --prod " + build_type + " " + build_arg)
 
 
 elapsed = timeit.default_timer() - startTime
