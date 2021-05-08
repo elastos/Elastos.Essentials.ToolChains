@@ -62,7 +62,6 @@ parser.add_argument('--build', action='store_true', help='build project')
 parser.add_argument('--release', action='store_true', help='build release')
 parser.add_argument('--buildarg', dest='buildarg', required=False,
                     help='Specify the build arg.')
-parser.add_argument('--appscopyonly', action='store_true', help='copy app without build app')
 parser.add_argument('--skippodupdate', action='store_true', help='Do no call \'pod repo update\'')
 parser.add_argument('--uploadsourcemap', action='store_true', help='upload source map to sentry')
 args = parser.parse_args()
@@ -87,11 +86,6 @@ if args.buildarg:
     build_arg=args.buildarg
 else:
     build_arg=''
-
-if args.appscopyonly:
-    build_apps=False
-else:
-    build_apps=True
 
 SCRIPT_PATH=os.path.realpath(__file__)
 TOOLCHAINS_DIR_PATH=os.path.dirname(os.path.dirname(SCRIPT_PATH))
@@ -252,8 +246,13 @@ if args.target == "all" or args.target == "cordova" or args.target == "app":
     run_cmd("npm install")
 
 if args.target == "all" or args.target == "cordova":
-    print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
-    updatePackageJson(APP_DIR_PATH + '/package.json', build_platform)
+    # print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
+    # updatePackageJson(APP_DIR_PATH + '/package.json', build_platform)
+
+    if "ios" in build_platform and not args.skippodupdate:
+        print_with_color(bcolors.OKCYAN, "If you don't want to call 'pod repo update', you can call build with '--skippodupdate'.")
+        # update pod frameworks
+        run_cmd('pod repo update')
 
     retry_count  = 0
     while True:
@@ -292,6 +291,11 @@ if args.target == "all" or args.target == "cordova":
         setup_android_ndk()
 
         run_cmd("ionic cordova build android --prod " + build_type + " " + build_arg)
+
+        if args.uploadsourcemap:
+            run_cmd("sentry-cli releases --org elastos new -p launcher default --finalize")
+            run_cmd("sentry-cli releases --org elastos -p launcher files default upload-sourcemaps www/ --rewrite --strip-common-prefix")
+
     # if "electron" in build_platform:
     #     run_cmd("ionic cordova build electron --prod " + build_type + " " + build_arg)
     if "ios" in build_platform:
