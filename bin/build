@@ -246,8 +246,8 @@ if args.target == "all" or args.target == "cordova" or args.target == "app":
     run_cmd("npm install")
 
 if args.target == "all" or args.target == "cordova":
-    # print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
-    # updatePackageJson(APP_DIR_PATH + '/package.json', build_platform)
+    print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
+    updatePackageJson(APP_DIR_PATH + '/package.json', build_platform)
 
     if "ios" in build_platform and not args.skippodupdate:
         print_with_color(bcolors.OKCYAN, "If you don't want to call 'pod repo update', you can call build with '--skippodupdate'.")
