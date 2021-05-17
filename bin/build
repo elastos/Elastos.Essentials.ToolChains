@@ -258,7 +258,7 @@ if args.target == "all" or args.target == "cordova":
     while True:
         retry_count += 1
         if retry_count <= 3:
-            run_cmd("cordova prepare")
+            run_cmd("SWIFT_VERSION=5 cordova prepare")
             if check_platform_installed():
                 break
             else:
