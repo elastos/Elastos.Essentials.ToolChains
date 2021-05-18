@@ -144,26 +144,6 @@ def setup_android_ndk():
         print_with_color(bcolors.WARNING, "You should set ANDROID_NDK_HOME")
         os.environ["ANDROID_NDK_HOME"]=os.environ["ANDROID_SDK_ROOT"] + "/ndk-bundle"
 
-# To be removed, should use ionic cordova build.
-# build app and copy the www/*
-def build_app(app_path, needBuild, output="www"):
-    print_with_color(bcolors.OKCYAN, "\r\n-------------------- Building APP --------------------")
-    os.chdir(app_path)
-
-    if needBuild:
-        if ela_plugin.isWindows():
-            run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
-            run_cmd("ionic build --prod")
-        else:
-            run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic build --prod")
-
-    if os.path.isdir(WWW_MIRROR_ANDROID):
-        copy_tree(output, WWW_MIRROR_ANDROID)
-    if os.path.isdir(WWW_MIRROR_IOS):
-        copy_tree(output, WWW_MIRROR_IOS)
-    if os.path.isdir(WWW_MIRROR_ELECTRON):
-        copy_tree(output, WWW_MIRROR_ELECTRON)
-
 def add_firebase():
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
         print_with_color(bcolors.OKCYAN, "Can not find GoogleService-Info.plist, Do not add firebase plugin!")
@@ -258,7 +238,11 @@ if args.target == "all" or args.target == "cordova":
     while True:
         retry_count += 1
         if retry_count <= 3:
-            run_cmd("SWIFT_VERSION=5 cordova prepare")
+            if isWindows():
+                run_cmd("cordova prepare")
+            else:
+                run_cmd("SWIFT_VERSION=5 cordova prepare")
+
             if check_platform_installed():
                 break
             else:
@@ -290,7 +274,11 @@ if args.target == "all" or args.target == "cordova":
         # check ANDROID_NDK_HOME
         setup_android_ndk()
 
-        run_cmd("ionic cordova build android --prod " + build_type + " " + build_arg)
+        if isWindows():
+            run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
+            run_cmd("ionic cordova build android --prod " + build_type + " " + build_arg)
+        else:
+            run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic cordova build android --prod " + build_type + " " + build_arg)
 
         if args.uploadsourcemap:
             run_cmd("sentry-cli releases --org elastos new -p launcher default --finalize")
@@ -299,7 +287,7 @@ if args.target == "all" or args.target == "cordova":
     # if "electron" in build_platform:
     #     run_cmd("ionic cordova build electron --prod " + build_type + " " + build_arg)
     if "ios" in build_platform:
-        run_cmd("ionic cordova build ios --prod " + build_type + " " + build_arg)
+        run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic cordova build ios --prod " + build_type + " " + build_arg)
 
 
 elapsed = timeit.default_timer() - startTime
