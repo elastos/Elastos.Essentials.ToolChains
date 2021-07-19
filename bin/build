@@ -146,10 +146,10 @@ def setup_android_ndk():
 
 def add_firebase():
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
-        print_with_color(bcolors.OKCYAN, "Can not find GoogleService-Info.plist, Do not add firebase plugin!")
+        print_with_color(bcolors.OKCYAN, "Can not find GoogleService-Info.plist. Not adding firebase plugin for iOS")
         return
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/google-services.json')):
-        print_with_color(bcolors.OKCYAN, "Can not find google-services.json, Do not add firebase plugin!")
+        print_with_color(bcolors.OKCYAN, "Can not find google-services.json. Not adding firebase plugin for Android")
         return
 
     # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
