@@ -252,27 +252,16 @@ if args.target == "all" or args.target == "cordova":
             print_with_color(bcolors.FAIL, 'cordova prepare failed.')
             sys.exit(1)
 
-    # if "electron" in build_platform:
-    #     #ela_plugin.install_electron()
-    #     ela_plugin.copy_electron_files()
-    #     ela_plugin.install_titlebar()
-    #     os.chdir(ELECTRON_TITLEBAR_DIR_PATH)
-    #     copy_tree("www", RUNTIME_DIR_PATH + "/www/shared-titlebar")
-    #     os.chdir(RUNTIME_DIR_PATH)
-    #     copy_tree("plugin_src", "www/plugin_src")
-    #     run_cmd("cordova prepare")
-
-    #     print("'cd Runtime/platforms/electron/www', to start in dev mode -> enter:")
-    #     print("windows: 'electron .'")
-    #     print("ubuntu: 'sudo electron --no-sandbox .'")
-
     add_firebase()
 
 # Must call 'ionic cordova build', otherwise the index.html will not load cordova.js
 if args.target == "all" or args.target == "cordova":
+    noBuild = ""
     if "android" in build_platform:
         # check ANDROID_NDK_HOME
         setup_android_ndk()
+
+        noBuild = " --no-build"
 
         if isWindows():
             run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
@@ -287,7 +276,7 @@ if args.target == "all" or args.target == "cordova":
     # if "electron" in build_platform:
     #     run_cmd("ionic cordova build electron --prod " + build_type + " " + build_arg)
     if "ios" in build_platform:
-        run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic cordova build ios --prod " + build_type + " " + build_arg)
+        run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic cordova build ios --prod " + build_type + " " + build_arg + noBuild)
 
 
 elapsed = timeit.default_timer() - startTime
