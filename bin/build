@@ -64,6 +64,7 @@ parser.add_argument('--buildarg', dest='buildarg', required=False,
                     help='Specify the build arg.')
 parser.add_argument('--skippodupdate', action='store_true', help='Do no call \'pod repo update\'')
 parser.add_argument('--uploadsourcemap', action='store_true', help='upload source map to sentry')
+parser.add_argument('--autoclean', action='store_true', help='Clean the build when cordova prepare failed')
 args = parser.parse_args()
 if args.release:
     build_type='--release'
@@ -115,6 +116,7 @@ def run_cmd(cmd, ignore_error=False):
     if not ignore_error and ret != 0:
         print_with_color(bcolors.FAIL, "Fail to: " + cmd)
         sys.exit(ret)
+    return ret
 
 def remove_tree(directory):
     print_with_color(bcolors.OKCYAN, "Removing: " + directory)
@@ -239,9 +241,16 @@ if args.target == "all" or args.target == "cordova":
         retry_count += 1
         if retry_count <= 3:
             if isWindows():
-                run_cmd("cordova prepare")
+                ret = run_cmd("cordova prepare", True)
             else:
-                run_cmd("SWIFT_VERSION=5 cordova prepare")
+                ret = run_cmd("SWIFT_VERSION=5 cordova prepare", True)
+
+            if ret != 0:
+                if args.autoclean:
+                    print_with_color(bcolors.WARNING, 'Build error, Clean the build...')
+                    # the current path is App.
+                    run_cmd(TOOLCHAINS_DIR_PATH + '/bin/build clean')
+                sys.exit(1)
 
             if check_platform_installed():
                 break

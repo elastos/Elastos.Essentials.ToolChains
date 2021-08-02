@@ -10,6 +10,17 @@ import timeit
 import json
 from collections import OrderedDict
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 parser = argparse.ArgumentParser(description='For Trinity release',
                                  formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('target', metavar='TARGET', choices=['all', 'build', 'tag', 'update'],
@@ -34,19 +45,27 @@ TOOLCHAINS_DIR_NAME=os.path.basename(TOOLCHAINS_DIR_PATH)
 PROJECT_DIR_PATH=os.path.join(TOOLCHAINS_DIR_PATH, "..")
 APP_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "App")
 
+###############
+### METHODS ###
+###############
+
+def print_with_color(color, message):
+    print(color + message + bcolors.ENDC)
 
 def run_cmd(cmd, ignore_error=False):
-    print("Running: " + cmd)
+    print_with_color(bcolors.OKCYAN, "Running: " + cmd)
     ret = subprocess.call(cmd, shell=True)
     if not ignore_error and ret != 0:
+        print_with_color(bcolors.FAIL, "Fail to: " + cmd)
         sys.exit(ret)
+    return ret
 
 def check_firebase():
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
-        print("Can not find GoogleService-Info.plist!")
+        print_with_color(bcolors.FAIL, "Can not find GoogleService-Info.plist!")
         sys.exit(1)
     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/google-services.json')):
-        print("Can not find google-services.json!")
+        print_with_color(bcolors.FAIL, "Can not find google-services.json!")
         sys.exit(1)
 
 def update_code(branchName, originBranch):
@@ -98,7 +117,7 @@ def getBuildArg():
 
 def let_user_pick(options):
     for idx, element in enumerate(options):
-        print("{}) {}".format(idx+1,element))
+        print_with_color(bcolors.OKCYAN, "{}) {}".format(idx+1,element))
 
     while True:
         i = input("Enter number: ")
@@ -113,7 +132,7 @@ startTime = timeit.default_timer()
 
 if args.target == "all" or args.target == "build":
     if not args.platform:
-        print("Pls choose the platform: [android, ios]")
+        print_with_color(bcolors.OKCYAN, "Pls choose the platform: [android, ios]")
         options = ["android", "ios"]
         index = let_user_pick(options)
         args.platform = options[index]
@@ -132,9 +151,9 @@ if args.target == "all" or args.target == "build":
     run_cmd('npm install @sentry/cli -g')
     run_cmd('sentry-cli login')
 
-    run_cmd('./ToolChains/bin/build all -pf ' + args.platform + ' --release  --uploadsourcemap' + getBuildArg())
+    run_cmd('./ToolChains/bin/build all -pf ' + args.platform + ' --release  --uploadsourcemap --autoclean ' + getBuildArg())
 
 elapsed = timeit.default_timer() - startTime
 minutes = elapsed / 60
 seconds = elapsed % 60
-print('elapsed time [%d min %0.2fs]' % (minutes, seconds))
+print_with_color(bcolors.OKCYAN, 'elapsed time [%d min %0.2fs]' % (minutes, seconds))
