@@ -22,10 +22,7 @@ SCRIPT_PATH=os.path.realpath(__file__)
 TOOLCHAINS_DIR_PATH=os.path.dirname(os.path.dirname(SCRIPT_PATH))
 TOOLCHAINS_DIR_NAME=os.path.basename(TOOLCHAINS_DIR_PATH)
 PROJECT_DIR_PATH=os.path.join(TOOLCHAINS_DIR_PATH, "..")
-RUNTIME_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Runtime")
-LAUNCHER_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Launcher")
-DAPPS_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Dapps")
-IONIC_DIR_PATH=os.path.join(DAPPS_DIR_PATH, "Ionic")
+APP_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "App")
 PLUGIN_DIR_PATH=os.path.join(PROJECT_DIR_PATH, "Plugins")
 
 def run_cmd(cmd, ignore_error=False):
@@ -43,35 +40,5 @@ def print_info(path):
         print("")
     print("")
 
-
-print("======================= Dapps commits log =======================")
-print("")
-
-ionic_dirs = os.listdir(IONIC_DIR_PATH)
-for dir in ionic_dirs:
-    dapp_dir = os.path.join(IONIC_DIR_PATH, dir)
-    if os.path.isdir(dapp_dir):
-        print("----------------------- Dapp: " + dir + " -----------------------")
-        print_info(dapp_dir)
-        
-
-
-print("======================= Launcher commits log =======================")
-print("")
-
-print_info(LAUNCHER_DIR_PATH)
-
-print("======================= Plugins commits log =======================")
-print("")
-
-plugins_dirs = os.listdir(PLUGIN_DIR_PATH)
-for dir in plugins_dirs:
-    plugin_dir = os.path.join(PLUGIN_DIR_PATH, dir)
-    if os.path.isdir(plugin_dir):
-        print("----------------------- Plugin: " + dir + " -----------------------")
-        print_info(plugin_dir)
-
-print("======================= Runtime commits log =======================")
-print("")
-
-print_info(RUNTIME_DIR_PATH)
+print("======================= App commits log =======================")
+print_info(APP_DIR_PATH)
