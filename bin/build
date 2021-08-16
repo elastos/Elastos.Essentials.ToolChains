@@ -48,8 +48,7 @@ parser.add_argument('target', metavar='TARGET', choices=['app', 'all', 'clean', 
                          plugin: reintall the specify plugin;
                      '''))
 parser.add_argument('-p', '--path', dest='target_path', metavar='PATH', required=False,
-                    help='Specify the path/name of plugin/Dapp.')
-parser.add_argument('--delete', action='store_true', help='Delete the dapp.')
+                    help='Specify the path of plugin.')
 parser.add_argument('-pf', '--platform', nargs='+', dest='platform', required=False,
                     help='Specify the build platform.')
 
@@ -62,9 +61,10 @@ parser.add_argument('--build', action='store_true', help='build project')
 parser.add_argument('--release', action='store_true', help='build release')
 parser.add_argument('--buildarg', dest='buildarg', required=False,
                     help='Specify the build arg.')
+parser.add_argument('--autoclean', action='store_true', help='Clean the build when cordova prepare failed')
 parser.add_argument('--skippodupdate', action='store_true', help='Do no call \'pod repo update\'')
 parser.add_argument('--uploadsourcemap', action='store_true', help='upload source map to sentry')
-parser.add_argument('--autoclean', action='store_true', help='Clean the build when cordova prepare failed')
+parser.add_argument('--with-firebase', dest='withfirebase', required=False, help='[x y], add or not firebase plugin')
 args = parser.parse_args()
 if args.release:
     build_type='--release'
@@ -87,6 +87,11 @@ if args.buildarg:
     build_arg=args.buildarg
 else:
     build_arg=''
+
+if args.withfirebase:
+    build_firebase=args.withfirebase
+else:
+    build_firebase=''
 
 SCRIPT_PATH=os.path.realpath(__file__)
 TOOLCHAINS_DIR_PATH=os.path.dirname(os.path.dirname(SCRIPT_PATH))
@@ -191,6 +196,19 @@ def check_platform_installed():
             return False
     return True
 
+def let_user_pick(options):
+    for idx, element in enumerate(options):
+        print_with_color(bcolors.OKCYAN, "{}) {}".format(idx+1,element))
+
+    while True:
+        i = input("Enter number: ")
+        try:
+            if 0 < int(i) <= len(options):
+                return int(i) - 1
+        except:
+            pass
+    return None
+
 startTime = timeit.default_timer()
 
 ela_plugin.setup_paths(APP_DIR_PATH, PLUGIN_DIR_PATH)
@@ -220,6 +238,14 @@ if args.target == "plugin":
 
 if args.target == "all" or args.target == "cordova" or args.target == "app":
     os.chdir(APP_DIR_PATH)
+
+    if not args.withfirebase:
+        print_with_color(bcolors.OKCYAN, "Do you want to add firebase plugin?")
+        print_with_color(bcolors.OKCYAN, "If you don't want to add firebase plugin, you can call build with '--with-firebase x'; Otherwise, you can call build with '--with-firebase y'.")
+        print_with_color(bcolors.OKGREEN, "cordova-plugin-firebasex: Brings push notifications, analytics, event tracking, crash reporting and more from Google Firebase to your Cordova project.")
+        options = ["x", "y"]
+        index = let_user_pick(options)
+        build_firebase = options[index]
 
     # Make sure to have at least an empty www and platforms folder in the runtime folder, so that cordova doesn't complain we are not in a cordova folder
     ela_util.safeMkdir(os.path.join(APP_DIR_PATH, "www"))
@@ -261,7 +287,8 @@ if args.target == "all" or args.target == "cordova":
             print_with_color(bcolors.FAIL, 'cordova prepare failed.')
             sys.exit(1)
 
-    add_firebase()
+    if build_firebase == 'y':
+        add_firebase()
 
 # Must call 'ionic cordova build', otherwise the index.html will not load cordova.js
 if args.target == "all" or args.target == "cordova":
