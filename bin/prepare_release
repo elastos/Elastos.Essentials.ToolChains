@@ -151,7 +151,7 @@ if args.target == "all" or args.target == "build":
     run_cmd('npm install @sentry/cli -g')
     run_cmd('sentry-cli login')
 
-    run_cmd('./ToolChains/bin/build all -pf ' + args.platform + ' --release  --uploadsourcemap --autoclean --with-firebase y ' + getBuildArg())
+    run_cmd('./ToolChains/bin/build all -pf ' + args.platform + ' --release  --uploadsourcemap --autoclean ' + getBuildArg())
 
 elapsed = timeit.default_timer() - startTime
 minutes = elapsed / 60

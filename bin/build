@@ -64,7 +64,6 @@ parser.add_argument('--buildarg', dest='buildarg', required=False,
 parser.add_argument('--autoclean', action='store_true', help='Clean the build when cordova prepare failed')
 parser.add_argument('--skippodupdate', action='store_true', help='Do no call \'pod repo update\'')
 parser.add_argument('--uploadsourcemap', action='store_true', help='upload source map to sentry')
-parser.add_argument('--with-firebase', dest='withfirebase', required=False, help='[x y], add or not firebase plugin')
 args = parser.parse_args()
 if args.release:
     build_type='--release'
@@ -87,11 +86,6 @@ if args.buildarg:
     build_arg=args.buildarg
 else:
     build_arg=''
-
-if args.withfirebase:
-    build_firebase=args.withfirebase
-else:
-    build_firebase=''
 
 SCRIPT_PATH=os.path.realpath(__file__)
 TOOLCHAINS_DIR_PATH=os.path.dirname(os.path.dirname(SCRIPT_PATH))
@@ -151,24 +145,24 @@ def setup_android_ndk():
         print_with_color(bcolors.WARNING, "You should set ANDROID_NDK_HOME")
         os.environ["ANDROID_NDK_HOME"]=os.environ["ANDROID_SDK_ROOT"] + "/ndk-bundle"
 
-def add_firebase():
-    if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
-        print_with_color(bcolors.OKCYAN, "Can not find GoogleService-Info.plist. Not adding firebase plugin for iOS")
-        return
-    if not os.path.isfile(os.path.join(APP_DIR_PATH + '/google-services.json')):
-        print_with_color(bcolors.OKCYAN, "Can not find google-services.json. Not adding firebase plugin for Android")
-        return
+# def add_firebase():
+#     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/GoogleService-Info.plist')):
+#         print_with_color(bcolors.OKCYAN, "Can not find GoogleService-Info.plist. Not adding firebase plugin for iOS")
+#         return
+#     if not os.path.isfile(os.path.join(APP_DIR_PATH + '/google-services.json')):
+#         print_with_color(bcolors.OKCYAN, "Can not find google-services.json. Not adding firebase plugin for Android")
+#         return
 
-    # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
-    # 9.1.2-cli is ok
-    sys = platform.system()
-    if sys != "Darwin":
-        run_cmd("cordova platform rm ios")
+#     # the version 10.1.0-cli will check pod in ubuntu, can't add cordova-plugin-firebasex for ios
+#     # 9.1.2-cli is ok
+#     sys = platform.system()
+#     if sys != "Darwin":
+#         run_cmd("cordova platform rm ios")
 
-    run_cmd("npm install -g xml-js")
+#     run_cmd("npm install -g xml-js")
 
-    cmd="cordova plugin add cordova-plugin-firebasex"
-    run_cmd(cmd)
+#     cmd="cordova plugin add cordova-plugin-firebasex"
+#     run_cmd(cmd)
 
 def updatePackageJson(path, platforms):
     file_in = open(path, "r")
@@ -195,19 +189,6 @@ def check_platform_installed():
         if not os.path.isfile(api_file):
             return False
     return True
-
-def let_user_pick(options):
-    for idx, element in enumerate(options):
-        print_with_color(bcolors.OKCYAN, "{}) {}".format(idx+1,element))
-
-    while True:
-        i = input("Enter number: ")
-        try:
-            if 0 < int(i) <= len(options):
-                return int(i) - 1
-        except:
-            pass
-    return None
 
 startTime = timeit.default_timer()
 
@@ -238,14 +219,6 @@ if args.target == "plugin":
 
 if args.target == "all" or args.target == "cordova" or args.target == "app":
     os.chdir(APP_DIR_PATH)
-
-    if not args.withfirebase:
-        print_with_color(bcolors.OKCYAN, "Do you want to add firebase plugin?")
-        print_with_color(bcolors.OKCYAN, "If you don't want to add firebase plugin, you can call build with '--with-firebase x'; Otherwise, you can call build with '--with-firebase y'.")
-        print_with_color(bcolors.OKGREEN, "cordova-plugin-firebasex: Brings push notifications, analytics, event tracking, crash reporting and more from Google Firebase to your Cordova project.")
-        options = ["x", "y"]
-        index = let_user_pick(options)
-        build_firebase = options[index]
 
     # Make sure to have at least an empty www and platforms folder in the runtime folder, so that cordova doesn't complain we are not in a cordova folder
     ela_util.safeMkdir(os.path.join(APP_DIR_PATH, "www"))
@@ -286,9 +259,6 @@ if args.target == "all" or args.target == "cordova":
         else:
             print_with_color(bcolors.FAIL, 'cordova prepare failed.')
             sys.exit(1)
-
-    if build_firebase == 'y':
-        add_firebase()
 
 # Must call 'ionic cordova build', otherwise the index.html will not load cordova.js
 if args.target == "all" or args.target == "cordova":
