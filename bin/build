@@ -249,6 +249,7 @@ if args.target == "all" or args.target == "cordova":
                     print_with_color(bcolors.WARNING, 'Build error, Clean the build...')
                     # the current path is App.
                     run_cmd(TOOLCHAINS_DIR_PATH + '/bin/build clean')
+                print_with_color(bcolors.FAIL, 'cordova prepare failed.')
                 sys.exit(1)
 
             if check_platform_installed():
