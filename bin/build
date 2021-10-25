@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+
 if sys.version_info < (3, 0):
     reload(sys)
     sys.setdefaultencoding('utf8')
@@ -18,6 +19,7 @@ from collections import OrderedDict
 sys.path.append(os.path.abspath(os.path.dirname(os.path.realpath(__file__)) + '/../lib'))
 import ela_plugin
 import ela_util
+
 # import ela_xml
 
 class bcolors:
@@ -72,15 +74,11 @@ else:
 
 if args.platform:
     if 'all' in args.platform:
-        # use it when ios and electron is ready.
-        # build_platform=['android', 'ios', 'electron']
-        build_platform=['android']
+        build_platform=['android', 'ios']
     else:
         build_platform=args.platform
 else:
-    # use it when ios is ready.
-    # build_platform= ['android', 'ios']
-    build_platform= ['android']
+    build_platform= ['android', 'ios']
 
 if args.buildarg:
     build_arg=args.buildarg
