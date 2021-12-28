@@ -269,10 +269,10 @@ if args.target == "all" or args.target == "cordova":
         noBuild = " --no-build"
 
         if isWindows():
-            run_cmd("set NODE_OPTIONS=--max-old-space-size=4092")
+            run_cmd("set NODE_OPTIONS=--max-old-space-size=8192")
             run_cmd("ionic cordova build android --prod " + build_type + " " + build_arg)
         else:
-            run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic cordova build android --prod " + build_type + " " + build_arg)
+            run_cmd("NODE_OPTIONS=--max-old-space-size=8192 ionic cordova build android --prod " + build_type + " " + build_arg)
 
         if args.uploadsourcemap:
             run_cmd("sentry-cli releases --org elastos new -p launcher default --finalize")
@@ -281,7 +281,7 @@ if args.target == "all" or args.target == "cordova":
     # if "electron" in build_platform:
     #     run_cmd("ionic cordova build electron --prod " + build_type + " " + build_arg)
     if "ios" in build_platform:
-        run_cmd("NODE_OPTIONS=--max-old-space-size=4092 ionic cordova build ios --prod " + build_type + " " + build_arg + noBuild)
+        run_cmd("NODE_OPTIONS=--max-old-space-size=8192 ionic cordova build ios --prod " + build_type + " " + build_arg + noBuild)
 
 
 elapsed = timeit.default_timer() - startTime
