@@ -222,7 +222,9 @@ if args.target == "all" or args.target == "cordova" or args.target == "app":
     ela_util.safeMkdir(os.path.join(APP_DIR_PATH, "www"))
     ela_util.safeMkdir(os.path.join(APP_DIR_PATH, "platforms"))
 
-    run_cmd("npm install --legacy-peer-deps")
+    # TODO: To restore config?
+    run_cmd("npm config set legacy-peer-deps true")
+    run_cmd("npm install")
 
 if args.target == "all" or args.target == "cordova":
     print_with_color(bcolors.OKGREEN, 'Build platform:%s' % build_platform)
