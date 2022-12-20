@@ -23,7 +23,7 @@ class bcolors:
 
 parser = argparse.ArgumentParser(description='For Trinity release',
                                  formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('target', metavar='TARGET', choices=['all', 'build', 'tag', 'update'],
+parser.add_argument('target', metavar='TARGET', choices=['all', 'build', 'tag', 'update', 'sentry'],
                     help=textwrap.dedent('''\
                          Specify the target.
                          all: update code and build;
@@ -143,15 +143,19 @@ if args.target == "all" or args.target == "update":
 if args.target == "tag":
     tag()
 
+if args.target == "sentry":
+    os.chdir(APP_DIR_PATH)
+    # upload soucemap to sentry for better debugging
+    run_cmd('npm install @sentry/cli -g')
+    run_cmd('sentry-cli login')
+    run_cmd("sentry-cli releases --org elastos new -p essentials-app default --finalize")
+    run_cmd("sentry-cli releases --org elastos -p essentials-app files default upload-sourcemaps www/ --rewrite --strip-common-prefix")
+
 if args.target == "all" or args.target == "build":
     os.chdir(PROJECT_DIR_PATH)
     check_firebase()
 
-    # upload soucemap to sentry for better debugging
-    run_cmd('npm install @sentry/cli -g')
-    run_cmd('sentry-cli login')
-
-    run_cmd('./ToolChains/bin/build all -pf ' + args.platform + ' --release  --uploadsourcemap --autoclean ' + getBuildArg())
+    run_cmd('./ToolChains/bin/build all -pf ' + args.platform + ' --release --autoclean ' + getBuildArg())
 
 elapsed = timeit.default_timer() - startTime
 minutes = elapsed / 60
