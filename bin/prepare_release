@@ -76,7 +76,7 @@ def update_code(branchName, originBranch):
     cmd = "git submodule foreach 'git fetch --all'"
     run_cmd(cmd)
 
-    update_code = input("Any changes in the working tree are discarded. Type 'y' to continue :")
+    update_code = input("Update master branch code. \n %s \nAny changes in the working tree are discarded. Type 'y' to continue :"%(os.getcwd()))
     if update_code.lower() != 'y':
         sys.exit(1)
 

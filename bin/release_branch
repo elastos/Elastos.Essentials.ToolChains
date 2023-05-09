@@ -54,7 +54,7 @@ def choose_branch():
 def update_code():
     os.chdir(PROJECT_DIR_PATH)
 
-    update_code = input("Update master branch code. Any changes in the working tree are discarded. Type 'y' to continue :")
+    update_code = input("Update master branch code. \n %s \nAny changes in the working tree are discarded. Type 'y' to continue :"%(os.getcwd()))
     if update_code.lower() != 'y':
         sys.exit(1)
     run_cmd('git checkout master && git reset --hard')
@@ -71,7 +71,7 @@ def fetch_all():
     run_cmd(cmd)
 
 def checkout_branch(branchName, originBranch):
-    update_code = input("Any changes in the working tree are discarded. Type 'y' to continue :")
+    update_code = input("Update master branch code. \n %s \nAny changes in the working tree are discarded. Type 'y' to continue :"%(os.getcwd()))
     if update_code.lower() != 'y':
         sys.exit(1)
 
